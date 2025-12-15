@@ -1,0 +1,25 @@
+[package]
+name = "media-nft-contract"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+codegen-units = 1
+lto = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[dependencies]
+casper-contract = { version = "5", default-features = false }
+casper-types = { version = "6", default-features = false }
+
+[features]
+default = ["casper-contract/no-std-helpers"]
+
+[dev-dependencies]
+casper-engine-test-support = { version = "8.1.1", default-features = false }
+casper-execution-engine = { version = "8.1.1", default-features = false }
+casper-types = { version = "6", default-features = false, features = ["std", "testing"] }
+
