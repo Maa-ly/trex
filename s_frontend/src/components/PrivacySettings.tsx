@@ -1,8 +1,7 @@
 import React from 'react';
 import { useStore } from '@/store/useStore';
 import { PrivacySettings as PrivacySettingsType } from '@/types';
-import { MEDIA_TYPE_LABELS, MediaType } from '@/config/constants';
-import { Settings, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 export const PrivacySettings: React.FC = () => {
   const { privacySettings, setPrivacySettings } = useStore();
@@ -122,4 +121,3 @@ const Toggle: React.FC<{ enabled: boolean; onChange: () => void }> = ({ enabled,
     </button>
   );
 };
-

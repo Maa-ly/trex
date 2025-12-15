@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { MediaItem, MediaType } from '@/types';
-import { MEDIA_TYPE_LABELS } from '@/config/constants';
+import { MediaItem } from '@/types';
+import { MEDIA_TYPE_LABELS, MediaType } from '@/config/constants';
 import { Plus, CheckCircle, Clock } from 'lucide-react';
 import { mintCompletionNFT } from '@/utils/contract';
 
 export const MediaTracker: React.FC = () => {
-  const { trackedMedia, addMedia, updateMedia, user, privacySettings } = useStore();
+  const { trackedMedia, updateMedia, user } = useStore();
   const [isAdding, setIsAdding] = useState(false);
 
   const handleComplete = async (media: MediaItem) => {
@@ -208,4 +208,3 @@ const AddMediaModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     </div>
   );
 };
-

@@ -26,7 +26,7 @@ export async function disconnectWallet(): Promise<void> {
   // TODO: Implement wallet disconnection
 }
 
-export async function signMessage(message: string, accountHash: string): Promise<string | null> {
+export async function signMessage(_message: string, _accountHash: string): Promise<string | null> {
   try {
     // TODO: Implement message signing
     return null;
@@ -35,4 +35,3 @@ export async function signMessage(message: string, accountHash: string): Promise
     return null;
   }
 }
-

@@ -1,10 +1,10 @@
+declare const chrome: any;
 // Content script for detecting media on web pages
 
 import { detectMediaFromURL, generateMediaId } from '@/utils/mediaDetection';
-import { MediaType } from '@/config/constants';
 
 // Get privacy settings from storage
-chrome.storage.local.get(['privacySettings'], (result) => {
+chrome.storage.local.get(['privacySettings'], (result: any) => {
   const privacySettings = result.privacySettings || {
     trackMovies: false,
     trackAnime: false,
@@ -47,7 +47,7 @@ new MutationObserver(() => {
   if (url !== lastUrl) {
     lastUrl = url;
     // Re-detect media on URL change
-    chrome.storage.local.get(['privacySettings'], (result) => {
+    chrome.storage.local.get(['privacySettings'], (result: any) => {
       const privacySettings = result.privacySettings || {};
       const detectedMedia = detectMediaFromURL(url, privacySettings);
       if (detectedMedia) {
@@ -63,4 +63,3 @@ new MutationObserver(() => {
     });
   }
 }).observe(document, { subtree: true, childList: true });
-

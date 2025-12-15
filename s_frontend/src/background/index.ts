@@ -1,3 +1,4 @@
+declare const chrome: any;
 // Background service worker for the extension
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -5,7 +6,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // Listen for messages from content scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: any) => {
   if (message.type === 'MEDIA_DETECTED') {
     // Handle detected media
     console.log('Media detected:', message.data);
@@ -15,7 +16,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Listen for tab updates to detect media
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId: number, changeInfo: any, tab: any) => {
   if (changeInfo.status === 'complete' && tab.url) {
     // Inject content script to detect media
     chrome.scripting.executeScript({
@@ -26,4 +27,3 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     });
   }
 });
-

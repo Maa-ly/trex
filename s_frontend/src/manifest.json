@@ -14,11 +14,11 @@
     "https://*/*"
   ],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "src/background/index.ts",
     "type": "module"
   },
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "src/popup/index.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -33,11 +33,11 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["src/content/index.ts"],
       "run_at": "document_idle"
     }
   ],
-  "options_page": "options.html",
+  "options_page": "src/options/index.html",
   "web_accessible_resources": [
     {
       "resources": ["dashboard.html"],
@@ -45,4 +45,3 @@
     }
   ]
 }
-

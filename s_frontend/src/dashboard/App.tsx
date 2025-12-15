@@ -8,7 +8,7 @@ import { useStore } from '@/store/useStore';
 import { Film, Award, Settings, Users } from 'lucide-react';
 
 export const DashboardApp: React.FC = () => {
-  const { isConnected } = useStore();
+  useStore();
 
   return (
     <Router>
@@ -77,4 +77,3 @@ const UsersPage: React.FC = () => {
     </div>
   );
 };
-

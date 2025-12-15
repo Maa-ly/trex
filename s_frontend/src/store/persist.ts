@@ -1,8 +1,14 @@
 // Persist middleware for Zustand (simplified version)
 // In production, use zustand/middleware/persist
 
-export const persist = <T>(config: any, options: any) => {
-  return (set: any, get: any, api: any) => {
+type SetState<T> = (partial: Partial<T> | ((state: T) => Partial<T>), replace?: boolean) => void;
+type GetState<T> = () => T;
+
+export const persist = <T>(
+  config: (set: SetState<T>, get: GetState<T>, api: any) => T,
+  options: { name: string; partialize?: (state: T) => Partial<T> }
+) => {
+  return (set: SetState<T>, get: GetState<T>, api: any) => {
     const { name, partialize } = options;
     
     // Load from storage
@@ -20,7 +26,7 @@ export const persist = <T>(config: any, options: any) => {
 
     // Save to storage on state changes
     const originalSet = set;
-    set = (partial: any, replace?: boolean) => {
+    set = (partial: Partial<T> | ((state: T) => Partial<T>), replace?: boolean) => {
       originalSet(partial, replace);
       try {
         const state = get();
@@ -34,4 +40,3 @@ export const persist = <T>(config: any, options: any) => {
     return config(set, get, api);
   };
 };
-

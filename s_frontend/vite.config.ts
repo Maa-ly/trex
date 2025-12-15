@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { webExtension } from 'vite-plugin-web-extension';
-import path from 'path';
+import webExtension from 'vite-plugin-web-extension';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   plugins: [
@@ -9,24 +9,15 @@ export default defineConfig({
     webExtension({
       manifest: './src/manifest.json',
       watchFilePaths: ['src/**/*'],
+      additionalInputs: ['src/dashboard/index.html'],
     }),
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   build: {
     outDir: 'dist',
-    rollupOptions: {
-      input: {
-        popup: './src/popup/index.html',
-        options: './src/options/index.html',
-        dashboard: './src/dashboard/index.html',
-        background: './src/background/index.ts',
-        content: './src/content/index.ts',
-      },
-    },
   },
 });
-

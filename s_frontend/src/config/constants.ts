@@ -1,16 +1,16 @@
 // Contract configuration
-export const CONTRACT_HASH = process.env.VITE_CONTRACT_HASH || '';
+export const CONTRACT_HASH = import.meta.env.VITE_CONTRACT_HASH || '';
 export const CONTRACT_NAME = 'media_nft_contract';
 
 // Network configuration
-export const CASPER_NETWORK = process.env.VITE_CASPER_NETWORK || 'testnet';
+export const CASPER_NETWORK = import.meta.env.VITE_CASPER_NETWORK || 'testnet';
 export const NODE_URL = 
   CASPER_NETWORK === 'testnet' 
     ? 'https://rpc.testnet.casper.network'
     : 'https://rpc.mainnet.casper.network';
 
 // CSPR.cloud configuration
-export const CSPR_CLOUD_API_KEY = process.env.VITE_CSPR_CLOUD_API_KEY || '';
+export const CSPR_CLOUD_API_KEY = import.meta.env.VITE_CSPR_CLOUD_API_KEY || '';
 export const CSPR_CLOUD_API_URL = 'https://api.cspr.cloud';
 
 // CSPR.click configuration

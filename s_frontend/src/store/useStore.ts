@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from './persist';
 import { PrivacySettings, MediaItem, User, NFT } from '@/types';
-import { STORAGE_KEYS } from '@/config/constants';
 
 interface AppState {
   // Privacy settings
@@ -45,49 +44,49 @@ export const useStore = create<AppState>()(
     (set) => ({
       // Privacy settings
       privacySettings: defaultPrivacySettings,
-      setPrivacySettings: (settings) =>
-        set((state) => ({
+      setPrivacySettings: (settings: Partial<PrivacySettings>) =>
+        set((state: AppState) => ({
           privacySettings: { ...state.privacySettings, ...settings },
         })),
       
       // Wallet
       isConnected: false,
       user: null,
-      setUser: (user) => set({ user, isConnected: !!user }),
-      setIsConnected: (connected) => set({ isConnected: connected }),
+      setUser: (user: User | null) => set({ user, isConnected: !!user }),
+      setIsConnected: (connected: boolean) => set({ isConnected: connected }),
       
       // Media tracking
       trackedMedia: [],
-      addMedia: (media) =>
-        set((state) => ({
+      addMedia: (media: MediaItem) =>
+        set((state: AppState) => ({
           trackedMedia: [...state.trackedMedia, media],
         })),
-      updateMedia: (id, updates) =>
-        set((state) => ({
-          trackedMedia: state.trackedMedia.map((item) =>
+      updateMedia: (id: string, updates: Partial<MediaItem>) =>
+        set((state: AppState) => ({
+          trackedMedia: state.trackedMedia.map((item: MediaItem) =>
             item.id === id ? { ...item, ...updates } : item
           ),
         })),
-      removeMedia: (id) =>
-        set((state) => ({
-          trackedMedia: state.trackedMedia.filter((item) => item.id !== id),
+      removeMedia: (id: string) =>
+        set((state: AppState) => ({
+          trackedMedia: state.trackedMedia.filter((item: MediaItem) => item.id !== id),
         })),
       
       // NFTs
       nfts: [],
-      setNFTs: (nfts) => set({ nfts }),
-      addNFT: (nft) =>
-        set((state) => ({
+      setNFTs: (nfts: NFT[]) => set({ nfts }),
+      addNFT: (nft: NFT) =>
+        set((state: AppState) => ({
           nfts: [...state.nfts, nft],
         })),
       
       // Contract
       contractHash: null,
-      setContractHash: (hash) => set({ contractHash: hash }),
+      setContractHash: (hash: string) => set({ contractHash: hash }),
     }),
     {
       name: 'media-nft-storage',
-      partialize: (state) => ({
+      partialize: (state: AppState) => ({
         privacySettings: state.privacySettings,
         trackedMedia: state.trackedMedia,
         nfts: state.nfts,
@@ -98,4 +97,3 @@ export const useStore = create<AppState>()(
     }
   )
 );
-

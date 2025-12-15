@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Media NFT dApp - Browser Extension & Web App for Casper Hackathon",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -36,4 +37,3 @@
     "vite-plugin-web-extension": "^4.1.1"
   }
 }
-

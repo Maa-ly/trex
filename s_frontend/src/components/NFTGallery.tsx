@@ -1,7 +1,8 @@
 import React from 'react';
 import { useStore } from '@/store/useStore';
 import { MEDIA_TYPE_LABELS } from '@/config/constants';
-import { Award, ExternalLink } from 'lucide-react';
+import { Award } from 'lucide-react';
+import { NFT } from '@/types';
 
 export const NFTGallery: React.FC = () => {
   const { nfts, user } = useStore();
@@ -40,7 +41,7 @@ export const NFTGallery: React.FC = () => {
   );
 };
 
-const NFTCard: React.FC<{ nft: any }> = ({ nft }) => {
+const NFTCard: React.FC<{ nft: NFT }> = ({ nft }) => {
   return (
     <div className="card p-4 hover:shadow-lg transition-shadow">
       <div className="flex items-start gap-4">
@@ -62,4 +63,3 @@ const NFTCard: React.FC<{ nft: any }> = ({ nft }) => {
     </div>
   );
 };
-
