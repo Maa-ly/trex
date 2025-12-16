@@ -47,11 +47,9 @@ For integration details, see `s_contract/INTEGRATION.md`.
 
 ## Frontend
 
-Frontend implementation coming soon.
+Frontend implementation 
 
-## License
 
-[Add your license here]
 
 ## Hackathon
 
