@@ -12,6 +12,9 @@ export default defineConfig({
       additionalInputs: ['src/dashboard/index.html'],
     }),
   ],
+  server: {
+    open: '/src/dashboard/index.html',
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
