@@ -20,6 +20,7 @@ export interface MediaItem {
   completedAt?: Date;
   nftId?: string;
   url?: string;
+  deployStatus?: string;
 }
 
 export interface NFT {
@@ -52,4 +53,3 @@ export interface ContractCallResult {
   error?: string;
   data?: any;
 }
-
