@@ -17,16 +17,37 @@ export const MediaTracker: React.FC = () => {
         media.mediaId,
         media.type,
         media.title,
-        user.accountHash,
-        null // TODO: Get signing key pair from wallet
+        user.publicKey,
+        null,
+        (status, data) => {
+          if (status === 'sent') {
+            updateMedia(media.id, {
+              deployStatus: 'Transaction sent',
+              nftId: data?.deployHash || data?.transactionHash || undefined,
+            });
+          }
+          if (status === 'processed') {
+            updateMedia(media.id, {
+              status: 'completed',
+              completedAt: new Date(),
+              progress: 100,
+              deployStatus: 'Processed',
+              nftId: data?.deployHash || data?.transactionHash || undefined,
+            });
+          }
+          if (status === 'timeout') {
+            updateMedia(media.id, { deployStatus: 'Timeout while processing' });
+          }
+          if (status === 'error') {
+            updateMedia(media.id, { deployStatus: 'Error signing or sending' });
+          }
+        }
       );
 
       if (result.success) {
         updateMedia(media.id, {
-          status: 'completed',
-          completedAt: new Date(),
-          progress: 100,
           nftId: result.deployHash,
+          deployStatus: result.deployHash ? 'Submitted' : 'Pending',
         });
       }
     } catch (error) {
@@ -125,6 +146,9 @@ const MediaCard: React.FC<{
             <p className="text-xs text-primary font-mono">
               NFT: {media.nftId.slice(0, 10)}...
             </p>
+          )}
+          {media.deployStatus && (
+            <p className="text-xs text-gray-600 mt-1">{media.deployStatus}</p>
           )}
         </div>
         {!isCompleted && onComplete && (
