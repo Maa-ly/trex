@@ -1,11 +1,13 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { PopupApp } from './App';
-import '@/styles/globals.css';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { PopupApp } from "./App";
+import { CsprClickWrapper } from "@/providers/CsprClickProvider";
+import "@/styles/globals.css";
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <PopupApp />
+    <CsprClickWrapper>
+      <PopupApp />
+    </CsprClickWrapper>
   </React.StrictMode>
 );
-
