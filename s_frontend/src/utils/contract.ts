@@ -1,5 +1,13 @@
 import { CasperClient, DeployUtil, RuntimeArgs, CLValueBuilder, CLPublicKey } from 'casper-js-sdk';
-import { CONTRACT_HASH, CONTRACT_NAME, NODE_URL, CASPER_NETWORK, MediaType } from '@/config/constants';
+import {
+  CHAIN_NAME,
+  CONTRACT_HASH,
+  CONTRACT_NAME,
+  DEPLOY_TTL_MS,
+  ENTRYPOINT_PAYMENT_AMOUNT,
+  NODE_URL,
+  MediaType,
+} from '@/config/constants';
 import { ContractCallResult } from '@/types';
 
 const casperClient = new CasperClient(NODE_URL);
@@ -27,17 +35,15 @@ export async function mintCompletionNFT(
   onStatusUpdate?: (status: string, data: any) => void
 ): Promise<ContractCallResult> {
   try {
-    const chainName = CASPER_NETWORK === 'testnet' ? 'casper-test' : 'casper';
-
     if (!publicKeyHex) {
       return { success: false, error: 'Public key required' };
     }
 
     const deployParams = new DeployUtil.DeployParams(
       CLPublicKey.fromHex(publicKeyHex),
-      chainName,
+      CHAIN_NAME,
       1,
-      1800000
+      DEPLOY_TTL_MS
     );
 
     const args = RuntimeArgs.fromMap({
@@ -59,7 +65,7 @@ export async function mintCompletionNFT(
             args
           );
 
-    const payment = DeployUtil.standardPayment('1000000000');
+    const payment = DeployUtil.standardPayment(ENTRYPOINT_PAYMENT_AMOUNT);
     const deploy = await DeployUtil.makeDeployWithAutoTimestamp(deployParams, session, payment);
     const w = window as any;
     if (w?.csprclick?.send) {

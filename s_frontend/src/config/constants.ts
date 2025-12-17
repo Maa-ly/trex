@@ -1,13 +1,20 @@
 // Contract configuration
 export const CONTRACT_HASH = import.meta.env.VITE_CONTRACT_HASH || '';
-export const CONTRACT_NAME = 'media_nft_contract';
+export const CONTRACT_NAME = import.meta.env.VITE_CONTRACT_NAME || 'media_nft_contract';
 
 // Network configuration
 export const CASPER_NETWORK = import.meta.env.VITE_CASPER_NETWORK || 'testnet';
-export const NODE_URL = 
-  CASPER_NETWORK === 'testnet' 
-    ? 'https://rpc.testnet.casper.network'
-    : 'https://rpc.mainnet.casper.network';
+export const CHAIN_NAME =
+  import.meta.env.VITE_CHAIN_NAME || (CASPER_NETWORK === 'testnet' ? 'casper-test' : 'casper');
+
+export const NODE_URL =
+  import.meta.env.VITE_NODE_URL ||
+  (CASPER_NETWORK === 'testnet'
+    ? 'https://node.testnet.casper.network/rpc'
+    : 'https://node.mainnet.casper.network/rpc');
+
+export const ENTRYPOINT_PAYMENT_AMOUNT = import.meta.env.VITE_ENTRYPOINT_PAYMENT_AMOUNT || '5000000000';
+export const DEPLOY_TTL_MS = Number(import.meta.env.VITE_DEPLOY_TTL_MS || 1800000);
 
 // CSPR.cloud configuration
 export const CSPR_CLOUD_API_KEY = import.meta.env.VITE_CSPR_CLOUD_API_KEY || '';
