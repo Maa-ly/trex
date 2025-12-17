@@ -25,6 +25,8 @@ Thumbs.db
 .env
 .env.local
 
+*.pem
+
 # Build artifacts
 dist/
 build/
@@ -40,4 +42,3 @@ yarn.lock
 tmp/
 temp/
 *.tmp
-
