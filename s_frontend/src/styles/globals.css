@@ -82,11 +82,13 @@ body::before {
            shadow-2xl border border-white/20 p-6 overflow-hidden;
   }
 
-  .card-glass::before {
-    content: "";
-    @apply absolute inset-0 bg-gradient-to-br from-primary-500/20 to-transparent opacity-0 
-           transition-opacity duration-300 rounded-2xl;
-  }
+.card-glass::before {
+  content: "";
+  @apply absolute inset-0 bg-gradient-to-br from-primary-500/20 to-transparent opacity-0 
+         transition-opacity duration-300 rounded-2xl;
+  pointer-events: none;
+  z-index: 0;
+}
 
   .card-glass:hover::before {
     @apply opacity-100;

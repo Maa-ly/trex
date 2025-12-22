@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useStore } from "@/store/useStore";
 import { useWalletConnect } from "@/utils/walletSdk";
 import { Wallet, LogOut, Copy, Check } from "lucide-react";
+import { useCsprClick } from "@/hooks/useCsprClick";
 
 export const WalletConnect: React.FC = () => {
   const { isConnected, user, setUser, setIsConnected } = useStore();
@@ -11,6 +12,7 @@ export const WalletConnect: React.FC = () => {
     account,
     isConnected: sdkConnected,
   } = useWalletConnect();
+  const { isInitialized } = useCsprClick();
   const [isConnecting, setIsConnecting] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -32,6 +34,10 @@ export const WalletConnect: React.FC = () => {
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
+      // Wait for SDK to initialize to ensure signIn opens the modal
+      if (!isInitialized) {
+        await new Promise((r) => setTimeout(r, 150));
+      }
       await connect();
       // Connection state will be synced via useEffect
     } catch (error) {
@@ -136,19 +142,19 @@ export const WalletConnect: React.FC = () => {
       <p className="text-xs text-white/50 mt-4">
         Need a wallet? Install{" "}
         <a
-          href="https://www.casperwallet.io/"
+          href="https://casperwallet.io/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary-400 hover:text-primary-300 underline"
+          className="text-primary-400 hover:text-primary-300 underline cursor-pointer"
         >
           Casper Wallet
         </a>{" "}
         or{" "}
         <a
-          href="https://www.casperdash.io/"
+          href="https://chromewebstore.google.com/detail/casperdash/hmfpdofehnmfnoaneplbcpejindkoafd"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary-400 hover:text-primary-300 underline"
+          className="text-primary-400 hover:text-primary-300 underline cursor-pointer"
         >
           CasperDash
         </a>

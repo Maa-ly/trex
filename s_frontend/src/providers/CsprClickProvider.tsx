@@ -11,23 +11,23 @@ import { ThemeProvider } from "styled-components";
 import { CsprClickThemes } from "@make-software/csprclick-ui";
 import { CsprClickContext } from "@/hooks/useCsprClick";
 
-// Get configuration from environment variables
-const appId = import.meta.env.VITE_CSPR_CLICK_APP_ID || "csprclick-template";
-const appName = import.meta.env.VITE_CSPR_CLICK_APP_NAME || "Media NFT Tracker";
-const walletConnectProjectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
-
-// CSPR.click initialization options
+// CSPR.click initialization options - hardcoded like the working csprclick-ts example
+// Use 'csprclick-template' for local development (works without registration)
 const clickOptions: CsprClickInitOptions = {
-  appName,
-  appId,
+  appName: "Media NFT Tracker",
+  appId: "csprclick-template",
   contentMode: CONTENT_MODE.IFRAME,
-  providers: ["casper-wallet", "ledger", "metamask-snap", "casperdash"],
-  ...(walletConnectProjectId && {
-    walletConnect: {
-      relayUrl: "wss://relay.walletconnect.com",
-      projectId: walletConnectProjectId,
-    },
-  }),
+  providers: [
+    "casper-wallet",
+    "ledger",
+    "metamask-snap",
+    "walletconnect",
+    "casperdash",
+  ],
+  walletConnect: {
+    relayUrl: "wss://relay.walletconnect.com",
+    projectId: "e8e8111e46f4cd44143fe05a51b49fb8", // WalletConnect project ID from working example
+  },
 };
 
 interface Props {
@@ -50,7 +50,7 @@ export const CsprClickWrapper: React.FC<Props> = ({ children }) => {
     <ThemeProvider theme={CsprClickThemes.dark}>
       <CsprClickProvider options={clickOptions}>
         <CsprClickContext.Provider value={{ isInitialized }}>
-          {/* ClickUI manages all wallet UI - we don't use the top bar */}
+          {/* ClickUI manages all wallet UI - modal popups for wallet selection */}
           <ClickUI />
           {children}
         </CsprClickContext.Provider>

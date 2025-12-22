@@ -19,8 +19,28 @@ export const useWalletConnect = () => {
 
     // Listen for connection events
     const handleConnect = (evt: CustomEvent) => {
-      const { account: connectedAccount } = evt.detail;
-      setAccount(connectedAccount);
+      const { account: connectedAccount } = evt.detail as any;
+      // Normalize account fields from SDK event
+      const publicKey =
+        connectedAccount.public_key || connectedAccount.publicKey;
+      const accountHash =
+        connectedAccount.account_hash || connectedAccount.accountHash;
+      if (publicKey && accountHash) {
+        setAccount({ public_key: publicKey, account_hash: accountHash });
+      } else if (publicKey && !accountHash) {
+        // Derive account hash if not provided
+        import("casper-js-sdk").then(({ CLPublicKey }) => {
+          try {
+            const derived =
+              CLPublicKey.fromHex(publicKey).toAccountRawHashStr();
+            setAccount({ public_key: publicKey, account_hash: derived });
+          } catch {
+            setAccount({ public_key: publicKey });
+          }
+        });
+      } else {
+        setAccount(connectedAccount);
+      }
       setIsConnected(true);
     };
 
@@ -65,9 +85,19 @@ export const useWalletConnect = () => {
   }, [clickRef]);
 
   const connect = async (): Promise<void> => {
+    console.log("[WalletConnect] connect() called, clickRef:", clickRef);
     if (clickRef) {
       // This opens the wallet selector modal
-      await clickRef.signIn();
+      console.log("[WalletConnect] Calling signIn()...");
+      try {
+        await clickRef.signIn();
+        console.log("[WalletConnect] signIn() completed");
+      } catch (err) {
+        console.error("[WalletConnect] signIn() error:", err);
+        throw err;
+      }
+    } else {
+      console.error("[WalletConnect] clickRef is null - SDK not initialized");
     }
   };
 

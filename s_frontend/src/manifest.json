@@ -41,6 +41,9 @@
     }
   ],
   "options_page": "src/options/index.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://cdn.cspr.click https://accounts.cspr.click https://*.cspr.click https://*.casperlabs.io https://*.casper.network wss://relay.walletconnect.com;"
+  },
   "web_accessible_resources": [
     {
       "resources": ["src/dashboard/index.html"],
