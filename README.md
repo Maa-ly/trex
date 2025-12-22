@@ -43,7 +43,6 @@ The smart contract is built using Casper blockchain and Rust. See `s_contract/RE
    ./deploy.sh
    ```
 
-For integration details, see `s_contract/INTEGRATION.md`.
 
 ## Frontend
 
