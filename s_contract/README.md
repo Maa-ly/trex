@@ -96,6 +96,39 @@ make test
    - `user_groups`: Maps users to their groups
    - `group_members`: Maps group IDs to member lists
 
+### Deployed Contract (Testnet)
+
+- **Deploy Date**: `2026-01-03`
+- **Deployer Public Key**: `0202c2cd36b0d59236bcca641302d6514849035d71db32d3c4259cbc17a8df72ecf5`
+- **Deploy Hash**: `e8937d7883f2b5425a8d4a9c3afb2aaa5b60d8d5af3d7d03de5d72c617ec6bc6`
+- **Block Hash**: `ce639ef4a7c751880058d0cd797d33cf1dd1d67945ef36adedd36cddafc6edd6`
+- **Contract Hash**: `hash-2735e33a51c1bcff1842bdd3e1ebf41d7c8d10c5f9387e587b2cc1bfef118a22`
+- **Contract Package Hash**: `contract-package-9772721fb50de623804e1f9d195cce60d22d42729fa0845c366c421983f5e9eb`
+- **Contract WASM Hash**: `contract-wasm-4f1cdd89104207eaca47e2507783edb31c2ead3e4046829d17e3f95f1b08f148`
+- **Payment Amount**: `500000000000`
+- **Network**: `casper-test`
+- **Node URL**: `https://node.testnet.casper.network/rpc`
+
+To use in frontend, set the following environment variables:
+
+```
+VITE_CONTRACT_HASH=hash-2735e33a51c1bcff1842bdd3e1ebf41d7c8d10c5f9387e587b2cc1bfef118a22
+VITE_CONTRACT_NAME=media_nft_contract
+VITE_CASPER_NETWORK=testnet
+VITE_CHAIN_NAME=casper-test
+VITE_NODE_URL=https://node.testnet.casper.network/rpc
+```
+
+---
+
+
+VITE_CONTRACT_HASH=hash-f997743f24897ee5888894c9bcd8d2ce80545f3e0ff4f26350ba787f8c40efe0
+VITE_CONTRACT_NAME=media_nft_contract
+VITE_CASPER_NETWORK=testnet
+VITE_CHAIN_NAME=casper-test
+VITE_NODE_URL=https://node.testnet.casper.network/rpc
+```
+
 ## Error Codes
 
 - `100`: NFT counter overflow
@@ -104,4 +137,3 @@ make test
 - `103`: Group already exists
 - `104`: Group does not exist
 - `105`: User already in group
-

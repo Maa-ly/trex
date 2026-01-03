@@ -12,14 +12,14 @@ crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [dependencies]
-casper-contract = { version = "5", default-features = false }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+casper-contract = { version = "5", default-features = false, features = ["no-std-helpers"] }
 casper-types = { version = "6", default-features = false }
 
-[features]
-default = ["casper-contract/no-std-helpers"]
-
 [dev-dependencies]
+blake2 = "0.10"
+digest = "0.10"
 casper-engine-test-support = { version = "8.1.1", default-features = false }
 casper-execution-engine = { version = "8.1.1", default-features = false }
 casper-types = { version = "6", default-features = false, features = ["std", "testing"] }
-
