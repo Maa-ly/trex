@@ -122,11 +122,6 @@ VITE_NODE_URL=https://node.testnet.casper.network/rpc
 ---
 
 
-VITE_CONTRACT_HASH=hash-f997743f24897ee5888894c9bcd8d2ce80545f3e0ff4f26350ba787f8c40efe0
-VITE_CONTRACT_NAME=media_nft_contract
-VITE_CASPER_NETWORK=testnet
-VITE_CHAIN_NAME=casper-test
-VITE_NODE_URL=https://node.testnet.casper.network/rpc
 ```
 
 ## Error Codes
