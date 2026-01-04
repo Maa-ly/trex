@@ -1,17 +1,33 @@
+/* Required fonts for CSPR Click UI and App */
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-primary: #8b5cf6;
-  --color-primary-dark: #7c3aed;
-  --color-primary-light: #a78bfa;
-  --color-secondary: #ec4899;
-  --color-accent: #06b6d4;
-  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-secondary: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
-  --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  /* Main brand colors */
+  --color-coral: #ff6d75;
+  --color-violet: #7c60fd;
+  --color-violet-light: #9d87ff;
+  --color-red: #f72349;
+  --color-disable: #994146;
+  --color-yellow: #feea46;
+  --color-green: #4be15a;
+
+  /* Background colors */
+  --color-bg-dark: #1d212b;
+  --color-bg-purple: #292347;
+
+  /* Legacy compatibility */
+  --color-primary: #ff6d75;
+  --color-secondary: #7c60fd;
+  --color-background: #1d212b;
+  --color-surface: #292347;
+  --color-text: #f8fafc;
+  --color-text-muted: #94a3b8;
 }
 
 * {
@@ -20,118 +36,318 @@
   box-sizing: border-box;
 }
 
+html,
 body {
+  font-size: 16px;
   font-family: "Outfit", system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  color: #f8fafc;
-  position: relative;
+  background: linear-gradient(109.28deg, #1d212b 12.96%, #292347 87.04%);
+  color: var(--color-text);
+  width: 100%;
+  min-height: 100vh;
+}
+
+body {
   overflow-x: hidden;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
+/* CSPR Click Modal - Override z-index to display above everything */
+#csprclick-iframe-container,
+#csprclick-modal-container,
+#csprclick-ui-wrapper,
+div[id*="csprclick"],
+iframe[id*="csprclick"],
+[data-csprclick],
+[class*="ClickUI"] {
+  z-index: 999999 !important;
+}
+
+/* Ensure CSPR Click elements are positioned correctly */
+#csprclick-ui-wrapper,
+#csprclick-iframe-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Make interactive elements clickable */
+#csprclick-iframe-container iframe,
+#csprclick-modal-container {
+  pointer-events: auto !important;
+}
+
+#root {
   width: 100%;
-  height: 100%;
-  background: radial-gradient(
-      circle at 20% 50%,
-      rgba(139, 92, 246, 0.1) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 80% 80%,
-      rgba(236, 72, 153, 0.1) 0%,
-      transparent 50%
-    );
-  pointer-events: none;
-  z-index: 0;
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-@layer components {
-  .btn-primary {
-    @apply relative bg-gradient-to-r from-primary-600 to-secondary text-white font-semibold py-3 px-6 rounded-xl
-           transition-all duration-300 shadow-lg hover:shadow-glow hover:scale-105 hover:-translate-y-0.5
-           active:scale-95 overflow-hidden;
-  }
-
-  .btn-primary::before {
-    content: "";
-    @apply absolute inset-0 bg-gradient-to-r from-primary-500 to-secondary-light opacity-0 transition-opacity duration-300;
-  }
-
-  .btn-primary:hover::before {
-    @apply opacity-100;
-  }
-
-  .btn-secondary {
-    @apply relative bg-white/10 backdrop-blur-md border-2 border-white/20 text-white font-semibold py-3 px-6 rounded-xl 
-           transition-all duration-300 hover:bg-white/20 hover:border-primary-400 hover:shadow-card-hover hover:scale-105;
-  }
-
-  .card {
-    @apply relative bg-white/10 backdrop-blur-xl rounded-2xl shadow-card border border-white/20 p-6
-           transition-all duration-300 hover:shadow-card-hover hover:bg-white/[0.15] hover:-translate-y-1;
-  }
-
-  .card-glass {
-    @apply relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl rounded-2xl 
-           shadow-2xl border border-white/20 p-6 overflow-hidden;
-  }
-
-.card-glass::before {
-  content: "";
-  @apply absolute inset-0 bg-gradient-to-br from-primary-500/20 to-transparent opacity-0 
-         transition-opacity duration-300 rounded-2xl;
-  pointer-events: none;
-  z-index: 0;
-}
-
-  .card-glass:hover::before {
-    @apply opacity-100;
-  }
-
-  .input-field {
-    @apply w-full px-4 py-3 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl 
-           focus:outline-none focus:border-primary-400 focus:bg-white/10 transition-all duration-300
-           text-white placeholder:text-gray-400;
-  }
-
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary-400 via-secondary to-accent-cyan bg-clip-text text-transparent;
-  }
-
-  .hero-gradient {
-    @apply bg-gradient-to-br from-primary-600 via-secondary to-primary-800;
-    background-size: 200% 200%;
-    animation: gradient 8s ease infinite;
-  }
-}
-
-@keyframes gradient {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-/* Float animation removed */
-
-/* Scrollbar styling */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-dark-light;
+  background: rgba(29, 33, 43, 0.5);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-primary-500/50 rounded-full hover:bg-primary-500;
+  background: linear-gradient(139.84deg, #ff6d75 50%, #9c86ff 96.42%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(139.84deg, #ff8a90 50%, #b0a0ff 96.42%);
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(29, 33, 43, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(139.84deg, #ff6d75 50%, #9c86ff 96.42%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-violet {
+  background: linear-gradient(135deg, #9d87ff 0%, #7c60fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.glow-coral {
+  box-shadow: 0 0 20px rgba(255, 109, 117, 0.3),
+    0 0 40px rgba(255, 109, 117, 0.2), 0 0 60px rgba(255, 109, 117, 0.1);
+}
+
+.glow-violet {
+  box-shadow: 0 0 20px rgba(124, 96, 253, 0.3), 0 0 40px rgba(124, 96, 253, 0.2),
+    0 0 60px rgba(124, 96, 253, 0.1);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(124, 96, 253, 0.3), 0 0 40px rgba(124, 96, 253, 0.2),
+    0 0 60px rgba(124, 96, 253, 0.1);
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px rgba(157, 135, 255, 0.3),
+    0 0 40px rgba(157, 135, 255, 0.2), 0 0 60px rgba(157, 135, 255, 0.1);
+}
+
+/* NFT Card styles */
+.nft-card {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 109, 117, 0.1) 0%,
+    rgba(124, 96, 253, 0.1) 100%
+  );
+  border: 1px solid rgba(255, 109, 117, 0.3);
+  transition: all 0.3s ease;
+}
+
+.nft-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 109, 117, 0.6);
+  box-shadow: 0 20px 40px rgba(255, 109, 117, 0.2);
+}
+
+/* Shimmer animation */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Button styles */
+.btn-primary {
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: linear-gradient(139.84deg, #ff6d75 50%, #9c86ff 96.42%);
+  @apply transition-all duration-300 ease-out;
+  @apply hover:shadow-neon-coral active:scale-95;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(139.84deg, #ff8a90 50%, #b0a0ff 96.42%);
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-dark-800 border border-dark-700 rounded-xl font-semibold text-white;
+  @apply transition-all duration-300 ease-out;
+  @apply hover:bg-dark-700 hover:border-coral/50;
+  @apply active:scale-95;
+}
+
+.btn-ghost {
+  @apply px-4 py-2 bg-transparent rounded-lg font-medium text-dark-300;
+  @apply transition-all duration-200;
+  @apply hover:bg-dark-800/50 hover:text-white;
+}
+
+.btn-coral {
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: var(--color-coral);
+  @apply transition-all duration-300 ease-out;
+  @apply hover:shadow-neon-coral active:scale-95;
+}
+
+.btn-violet {
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: var(--color-violet);
+  @apply transition-all duration-300 ease-out;
+  @apply hover:shadow-neon active:scale-95;
+}
+
+/* Input styles */
+.input-field {
+  @apply w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white;
+  @apply placeholder:text-dark-400 focus:outline-none focus:border-coral;
+  @apply transition-all duration-200;
+}
+
+/* Date input with white calendar icon */
+/* White native calendar icon (WebKit/Blink) */
+.input-field[type="date"]::-webkit-calendar-picker-indicator {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="%23ffffff" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>') !important;
+  opacity: 1;
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="%23ffffff" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>') !important;
+}
+
+.input-field[type="date"],
+input[type="date"] {
+  color-scheme: dark;
+}
+
+.input-field-search {
+  @apply w-full pl-12 pr-10 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white;
+  @apply placeholder:text-dark-400 focus:outline-none focus:border-coral;
+  @apply transition-all duration-200;
+}
+
+/* Card styles */
+.card {
+  @apply p-4 rounded-2xl glass-dark border border-dark-700/50;
+  @apply transition-all duration-300;
+  @apply hover:border-coral/30;
+}
+
+/* Media type badge colors */
+.badge-book {
+  @apply bg-emerald-500/20 text-emerald-400 border-emerald-500/30;
+}
+.badge-movie {
+  @apply bg-coral/20 text-coral border-coral/30;
+}
+.badge-anime {
+  @apply bg-pink-500/20 text-pink-400 border-pink-500/30;
+}
+.badge-manga {
+  @apply bg-orange-500/20 text-orange-400 border-orange-500/30;
+}
+.badge-comic {
+  @apply bg-brand-yellow/20 text-brand-yellow border-brand-yellow/30;
+}
+.badge-tvshow {
+  @apply bg-violet/20 text-violet-light border-violet/30;
+}
+
+/* Achievement rarity */
+.rarity-common {
+  @apply border-gray-400 text-gray-400;
+}
+.rarity-uncommon {
+  @apply border-brand-green text-brand-green;
+}
+.rarity-rare {
+  @apply border-violet text-violet;
+}
+.rarity-epic {
+  @apply border-coral text-coral;
+}
+.rarity-legendary {
+  @apply border-brand-yellow text-brand-yellow;
+}
+
+/* App-specific gradient backgrounds */
+.bg-app-gradient {
+  background: linear-gradient(109.28deg, #1d212b 12.96%, #292347 87.04%);
+}
+
+.bg-main-gradient {
+  background: linear-gradient(139.84deg, #ff6d75 50%, #9c86ff 96.42%);
+}
+
+/* Icon containers */
+.icon-container {
+  @apply flex items-center justify-center rounded-xl;
+}
+
+.icon-container-sm {
+  @apply w-8 h-8;
+}
+
+.icon-container-md {
+  @apply w-10 h-10;
+}
+
+.icon-container-lg {
+  @apply w-12 h-12;
+}
+
+.icon-container-xl {
+  @apply w-16 h-16;
+}
+
+.icon-container-coral {
+  @apply bg-coral/20;
+}
+
+.icon-container-violet {
+  @apply bg-violet/20;
+}
+
+.icon-container-green {
+  @apply bg-brand-green/20;
+}
+
+.icon-container-yellow {
+  @apply bg-brand-yellow/20;
 }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Media NFT Tracker",
+  "name": "Trex - Media Achievement Tracker",
   "version": "1.0.0",
-  "description": "Track your media consumption and earn NFTs on Casper Network",
+  "description": "Track and verify your media consumption achievements with blockchain-verified NFTs on Casper Network",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -13,14 +13,37 @@
     "storage",
     "activeTab",
     "tabs",
+    "notifications",
+    "contextMenus",
     "scripting"
   ],
+  "optional_permissions": [
+    "history"
+  ],
   "host_permissions": [
+    "https://*/*",
     "http://*/*",
-    "https://*/*"
+    "https://cdn.cspr.click/*",
+    "https://accounts.cspr.click/*",
+    "https://*.cspr.click/*",
+    "https://*.casperlabs.io/*",
+    "https://*.casper.network/*"
+  ],
+  "optional_host_permissions": [
+    "https://*.netflix.com/*",
+    "https://*.youtube.com/*",
+    "https://*.primevideo.com/*",
+    "https://*.amazon.com/*",
+    "https://*.disneyplus.com/*",
+    "https://*.hulu.com/*",
+    "https://*.crunchyroll.com/*",
+    "https://*.goodreads.com/*",
+    "https://*.mangadex.org/*",
+    "https://*.myanimelist.net/*",
+    "https://*.anilist.co/*"
   ],
   "background": {
-    "service_worker": "src/background/index.ts",
+    "service_worker": "src/background/service-worker.ts",
     "type": "module"
   },
   "action": {
@@ -32,11 +55,28 @@
       "128": "icons/icon-128.png"
     }
   },
-  
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/index.ts"],
+      "matches": [
+        "https://*.netflix.com/*",
+        "https://*.youtube.com/watch*",
+        "https://*.youtube.com/shorts/*",
+        "https://*.primevideo.com/*",
+        "https://*.amazon.com/gp/video/*",
+        "https://*.disneyplus.com/*",
+        "https://*.hulu.com/watch/*",
+        "https://*.crunchyroll.com/watch/*",
+        "https://*.webtoons.com/*",
+        "https://filmboom.top/*",
+        "https://*.goodreads.com/book/*",
+        "https://*.mangadex.org/chapter/*",
+        "https://*.myanimelist.net/anime/*",
+        "https://*.anilist.co/anime/*",
+        "http://localhost/*",
+        "https://*.trex.io/*",
+        "https://*.vercel.app/*"
+      ],
+      "js": ["src/content/media-tracker.ts"],
       "run_at": "document_idle"
     }
   ],
@@ -44,9 +84,17 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://cdn.cspr.click https://accounts.cspr.click https://*.cspr.click https://*.casperlabs.io https://*.casper.network wss://relay.walletconnect.com;"
   },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:*/*",
+      "https://localhost:*/*",
+      "https://*.trex.io/*",
+      "https://*.vercel.app/*"
+    ]
+  },
   "web_accessible_resources": [
     {
-      "resources": ["src/dashboard/index.html"],
+      "resources": ["src/dashboard/index.html", "icons/*"],
       "matches": ["<all_urls>"]
     }
   ]

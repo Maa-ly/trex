@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { WalletConnect } from "@/components/WalletConnect";
 import { MediaTracker } from "@/components/MediaTracker";
 import { NFTGallery } from "@/components/NFTGallery";
-import { Settings, Film, Award, Users, Sparkles } from "lucide-react";
+import { Settings, Film, Award, Users } from "lucide-react";
 import { useStore } from "@/store/useStore";
 
 type Tab = "track" | "nfts" | "users" | "settings";
@@ -25,9 +25,7 @@ export const PopupApp: React.FC = () => {
       {/* Header */}
       <div className="relative hero-gradient p-4 shadow-2xl flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white/20 backdrop-blur-xl rounded-xl flex items-center justify-center shadow-glow">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
+          <img src="/icons/icon-48.png" alt="Trex" className="w-10 h-10" />
           <div>
             <h1 className="text-xl font-black text-white">Media NFT Tracker</h1>
             <p className="text-white/80 text-xs">Track & Earn NFTs on Casper</p>

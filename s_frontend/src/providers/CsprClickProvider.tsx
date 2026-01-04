@@ -1,4 +1,5 @@
 import React, { useEffect, useState, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   ClickProvider as CsprClickProvider,
   ClickUI,
@@ -38,10 +39,11 @@ export const CsprClickWrapper: React.FC<Props> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Mark as initialized after a short delay to ensure SDK is ready
+    // Mark as initialized after SDK has time to load
     const timer = setTimeout(() => {
       setIsInitialized(true);
-    }, 100);
+      console.log("[CSPR Click] SDK initialized");
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -50,8 +52,8 @@ export const CsprClickWrapper: React.FC<Props> = ({ children }) => {
     <ThemeProvider theme={CsprClickThemes.dark}>
       <CsprClickProvider options={clickOptions}>
         <CsprClickContext.Provider value={{ isInitialized }}>
-          {/* ClickUI manages all wallet UI - modal popups for wallet selection */}
-          <ClickUI />
+          {/* ClickUI wrapped in portal to display above everything */}
+          {createPortal(<ClickUI />, document.body)}
           {children}
         </CsprClickContext.Provider>
       </CsprClickProvider>

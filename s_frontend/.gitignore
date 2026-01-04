@@ -4,8 +4,11 @@ build/
 *.log
 .env
 .env.local
+.env.extension
+.env.extension.example
 .DS_Store
 *.local
+/dist-extension/
 
 # Vite
 .vite/
