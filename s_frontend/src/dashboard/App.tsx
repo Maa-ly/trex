@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { HomePage } from "@/pages/HomePage";
 import { ExplorePage } from "@/pages/ExplorePage";
@@ -10,6 +10,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { MediaDetailPage } from "@/pages/MediaDetailPage";
 import { MintPage } from "@/pages/MintPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import AuthPage from "@/pages/AuthPage";
 import { useExtensionSync } from "@/hooks/useExtensionSync";
 
 // Component to handle extension sync
@@ -19,13 +20,25 @@ function ExtensionSyncProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Layout wrapper for main app routes
+function LayoutWrapper() {
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
+}
+
 function App() {
   return (
     <HashRouter>
       <ExtensionSyncProvider>
-        <Layout>
-          <Routes>
-            {/* Default route - redirect to home */}
+        <Routes>
+          {/* Auth page - outside Layout for extension connection */}
+          <Route path="/auth" element={<AuthPage />} />
+
+          {/* Main app routes with Layout */}
+          <Route element={<LayoutWrapper />}>
             <Route index element={<HomePage />} />
             <Route path="/" element={<HomePage />} />
             <Route path="/explore" element={<ExplorePage />} />
@@ -38,8 +51,8 @@ function App() {
             <Route path="/mint" element={<MintPage />} />
             {/* Catch all unmatched routes - 404 page */}
             <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Layout>
+          </Route>
+        </Routes>
       </ExtensionSyncProvider>
     </HashRouter>
   );

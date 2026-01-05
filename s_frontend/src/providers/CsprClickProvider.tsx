@@ -12,12 +12,23 @@ import { ThemeProvider } from "styled-components";
 import { CsprClickThemes } from "@make-software/csprclick-ui";
 import { CsprClickContext } from "@/hooks/useCsprClick";
 
-// CSPR.click initialization options - hardcoded like the working csprclick-ts example
-// Use 'csprclick-template' for local development (works without registration)
+// Detect if running as extension (popup window is smaller)
+const isExtension =
+  typeof chrome !== "undefined" &&
+  chrome.runtime &&
+  chrome.runtime.id !== undefined;
+
+// Local SDK path - bundled to bypass CSP restrictions from CDN
+// The SDK is downloaded from cdn.cspr.click/latest/csprclick-sdk-1.12.js
+const localSdkPath = "/csprclick-sdk-1.12.js";
+
+// CSPR.click initialization options
+// Use POPUP mode for extensions (bypasses CSP restrictions)
+// Use IFRAME mode for web (better UX)
 const clickOptions: CsprClickInitOptions = {
   appName: "Media NFT Tracker",
   appId: "csprclick-template",
-  contentMode: CONTENT_MODE.IFRAME,
+  contentMode: isExtension ? CONTENT_MODE.POPUP : CONTENT_MODE.IFRAME,
   providers: [
     "casper-wallet",
     "ledger",
@@ -50,7 +61,10 @@ export const CsprClickWrapper: React.FC<Props> = ({ children }) => {
 
   return (
     <ThemeProvider theme={CsprClickThemes.dark}>
-      <CsprClickProvider options={clickOptions}>
+      <CsprClickProvider
+        options={clickOptions}
+        {...(isExtension ? { csprclickSdk: localSdkPath } : {})}
+      >
         <CsprClickContext.Provider value={{ isInitialized }}>
           {/* ClickUI wrapped in portal to display above everything */}
           {createPortal(<ClickUI />, document.body)}

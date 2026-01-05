@@ -15,12 +15,12 @@ const SUPPORTED_PLATFORMS = {
     },
   },
   youtube: {
-    patterns: ["youtube.com/watch", "youtube.com/shorts"],
+    patterns: ["youtube.com"],
     type: "video",
     selectors: {
       // Multiple possible title selectors for different YouTube layouts
       title:
-        "h1.ytd-watch-metadata yt-formatted-string, h1.ytd-video-primary-info-renderer yt-formatted-string, #title h1, .ytp-title-link",
+        "h1.ytd-watch-metadata yt-formatted-string, h1.ytd-video-primary-info-renderer yt-formatted-string, #title h1, .ytp-title-link, ytd-watch-metadata #title yt-formatted-string",
       progress: ".ytp-progress-bar",
     },
   },
@@ -1741,22 +1741,50 @@ function extractMediaInfo(): MediaInfo | null {
 
       // Special handling for YouTube
       if (name === "youtube") {
+        // YouTube-specific title selectors (order matters - most reliable first)
         const titleSelectors = [
-          "h1.ytd-watch-metadata yt-formatted-string",
-          "h1.ytd-video-primary-info-renderer yt-formatted-string",
+          // Main video page title
+          "ytd-watch-metadata h1.ytd-watch-metadata yt-formatted-string",
           "#title h1 yt-formatted-string",
+          "ytd-watch-metadata yt-formatted-string.ytd-watch-metadata",
+          "h1.ytd-watch-metadata yt-formatted-string",
+          // Older YouTube layouts
+          "h1.ytd-video-primary-info-renderer yt-formatted-string",
+          "#info-contents h1 yt-formatted-string",
+          // Video player title link
           ".ytp-title-link",
-          "ytd-watch-metadata h1",
-          "#container h1.title",
+          // Shorts
           "ytd-reel-video-renderer h2.title",
           ".reel-video-in-sequence ytd-reel-player-header-renderer h2",
+          // Generic fallbacks
+          "#container h1.title",
+          "ytd-watch-metadata h1",
+          "#title h1",
         ];
 
         for (const selector of titleSelectors) {
-          const el = document.querySelector(selector);
-          if (el?.textContent?.trim()) {
-            title = el.textContent.trim();
-            break;
+          try {
+            const el = document.querySelector(selector);
+            if (el?.textContent?.trim() && el.textContent.trim().length > 1) {
+              title = el.textContent.trim();
+              console.log(
+                "[Trex] YouTube title found:",
+                title,
+                "via",
+                selector
+              );
+              break;
+            }
+          } catch {
+            // Selector failed, try next
+          }
+        }
+
+        // Fallback to og:title for YouTube
+        if (title === "Unknown Title") {
+          const ogTitle = document.querySelector('meta[property="og:title"]');
+          if (ogTitle) {
+            title = ogTitle.getAttribute("content") || title;
           }
         }
       } else {
@@ -1846,9 +1874,7 @@ function extractMediaInfo(): MediaInfo | null {
 
     // Only skip if no title AND it's not a manga/book site
     if (title === "Unknown Title" && !isMangaOrBook) {
-      console.log(
-        "[Trex] Could not extract title for video content, skipping"
-      );
+      console.log("[Trex] Could not extract title for video content, skipping");
       return null;
     }
 
@@ -2643,6 +2669,68 @@ function setupExtensionBridge() {
         message
       );
 
+      // Handle WALLET_CONNECTED from auth page
+      if (message.type === "WALLET_CONNECTED" && message.session) {
+        console.log(
+          "[Trex Bridge] Wallet connected, saving session:",
+          message.session
+        );
+
+        // Save wallet session to chrome.storage
+        chrome.storage.local.set({
+          trex_wallet_session: message.session,
+          trex_wallet_connected: true,
+        });
+
+        // Notify background script
+        chrome.runtime
+          .sendMessage({
+            type: "WALLET_SESSION_UPDATED",
+            session: message.session,
+          })
+          .catch(() => {
+            // Extension popup might not be open
+          });
+
+        // Acknowledge receipt to web app
+        window.postMessage(
+          {
+            type: "WALLET_CONNECTED_ACK",
+            source: "trex-extension",
+            success: true,
+          },
+          "*"
+        );
+      }
+
+      // Handle WALLET_DISCONNECTED from auth page
+      if (message.type === "WALLET_DISCONNECTED") {
+        console.log("[Trex Bridge] Wallet disconnected");
+
+        // Clear wallet session from chrome.storage
+        chrome.storage.local.remove([
+          "trex_wallet_session",
+          "trex_wallet_connected",
+        ]);
+
+        // Notify background script
+        chrome.runtime
+          .sendMessage({
+            type: "WALLET_SESSION_CLEARED",
+          })
+          .catch(() => {});
+
+        // Acknowledge receipt
+        window.postMessage(
+          {
+            type: "WALLET_DISCONNECTED_ACK",
+            source: "trex-extension",
+            success: true,
+          },
+          "*"
+        );
+      }
+
       // Handle SESSION_DATA or SESSION_SYNC (both are used for session sync)
       if (
         message.type === MESSAGE_TYPES.SESSION_DATA ||
@@ -2717,15 +2805,68 @@ function setupExtensionBridge() {
   console.log("[Trex Bridge] Extension bridge initialized");
 }
 
+// Enhanced video detection for YouTube and other SPA sites
+function setupVideoListeners() {
+  // Listen for video play events (bubbles from video elements)
+  document.addEventListener(
+    "play",
+    (e) => {
+      const el = e.target as HTMLVideoElement;
+      if (el && el.tagName === "VIDEO" && el.duration > 0 && !currentSession) {
+        console.log("[Trex] Video play detected, starting tracking");
+        startTracking();
+      }
+    },
+    true
+  );
+
+  // Listen for video timeupdate events (fires continuously while video plays)
+  document.addEventListener(
+    "timeupdate",
+    (e) => {
+      const el = e.target as HTMLVideoElement;
+      if (el && el.tagName === "VIDEO" && el.duration > 0 && !currentSession) {
+        console.log("[Trex] Video timeupdate detected, starting tracking");
+        startTracking();
+      }
+    },
+    true
+  );
+
+  // For YouTube specifically, watch for URL changes (SPA navigation)
+  if (window.location.hostname.includes("youtube.com")) {
+    let lastUrl = window.location.href;
+
+    // YouTube uses History API for navigation
+    const checkUrlChange = () => {
+      if (window.location.href !== lastUrl) {
+        console.log("[Trex] YouTube URL changed, re-checking for video");
+        lastUrl = window.location.href;
+
+        // Reset session on navigation to new video
+        if (currentSession) {
+          currentSession = null;
+        }
+
+        // Retry tracking after a short delay
+        setTimeout(() => {
+          if (!currentSession) {
+            startTracking();
+          }
+        }, 2000);
+      }
+    };
+
+    // Poll for URL changes (YouTube doesn't always fire popstate)
+    setInterval(checkUrlChange, 1000);
+
+    // Also listen for popstate
+    window.addEventListener("popstate", () => {
+      checkUrlChange();
+    });
+  }
+}
+
 // Start initialization
-document.addEventListener(
-  "play",
-  (e) => {
-    const el = e.target as HTMLVideoElement;
-    if (el && el.duration > 0 && !currentSession) {
-      startTracking();
-    }
-  },
-  true
-);
+setupVideoListeners();
 init();

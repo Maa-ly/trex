@@ -26,11 +26,16 @@ export function Header() {
   useEffect(() => {
     if (!clickRef) return;
 
+    // Use a ref to track if we've already shown toast for this session
+    let hasShownConnectToast = false;
+    let hasShownDisconnectToast = false;
+
     const handleSignedIn = async (evt: any) => {
       console.log("CSPR Click signed in event:", evt);
       const account = evt.account || evt.detail?.account || evt.detail;
 
-      if (account) {
+      if (account && !hasShownConnectToast) {
+        hasShownConnectToast = true;
         // Extract account info from event
         const address =
           account.public_key || account.publicKey || account.activeKey;
@@ -46,22 +51,31 @@ export function Header() {
           type: "success",
           message: "Wallet connected successfully",
         });
+
+        // Reset disconnect flag when connected
+        hasShownDisconnectToast = false;
       }
     };
 
     const handleDisconnected = async () => {
       console.log("CSPR Click disconnected event");
-      logout();
-      addToast({
-        type: "info",
-        message: "Wallet disconnected",
-      });
+      if (!hasShownDisconnectToast) {
+        hasShownDisconnectToast = true;
+        logout();
+        addToast({
+          type: "info",
+          message: "Wallet disconnected",
+        });
+        // Reset connect flag when disconnected
+        hasShownConnectToast = false;
+      }
     };
 
     // Use clickRef.on() for React SDK event listeners
     clickRef.on("csprclick:signed_in", handleSignedIn);
     clickRef.on("csprclick:signed_out", handleDisconnected);
-    clickRef.on("csprclick:disconnected", handleDisconnected);
+    // Don't listen to disconnected - signed_out is enough
+    // clickRef.on("csprclick:disconnected", handleDisconnected);
 
     // Check if already connected on mount
     const checkConnection = async () => {
@@ -81,7 +95,11 @@ export function Header() {
 
     checkConnection();
 
-    // Cleanup is not needed for clickRef.on() - SDK handles it
+    // Cleanup listeners
+    return () => {
+      clickRef.off?.("csprclick:signed_in", handleSignedIn);
+      clickRef.off?.("csprclick:signed_out", handleDisconnected);
+    };
   }, [
     clickRef,
     setConnected,
@@ -116,16 +134,18 @@ export function Header() {
   const handleDisconnect = async () => {
     try {
       // Disconnect from CSPR Click SDK
+      // The event listener will handle state cleanup and toast
       if (clickRef) {
         await clickRef.signOut();
+      } else {
+        // If no clickRef, manually logout
+        logout();
+        addToast({
+          type: "info",
+          message: "Disconnected",
+        });
       }
-      // Clear app state
-      logout();
       setShowDropdown(false);
-      addToast({
-        type: "info",
-        message: "Disconnected",
-      });
     } catch (error) {
       console.error("Disconnect error:", error);
     }

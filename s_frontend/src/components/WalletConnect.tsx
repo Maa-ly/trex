@@ -1,8 +1,19 @@
 import { useState, useEffect } from "react";
 import { useClickRef } from "@make-software/csprclick-ui";
 import { useStore } from "@/store/useStore";
-import { LogOut, Copy, Check } from "lucide-react";
+import { LogOut, Copy, Check, ExternalLink } from "lucide-react";
 import { WalletImageIcon } from "./AppIcons";
+import {
+  isExtension,
+  openAuthPage,
+  getWalletSession,
+  clearWalletSession,
+  setupAuthListener,
+  WalletSession,
+} from "@/services/extensionAuthBridge";
+
+// Check if we're running as extension
+const runningAsExtension = isExtension();
 
 export function WalletConnect() {
   const clickRef = useClickRef();
@@ -10,8 +21,65 @@ export function WalletConnect() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Extension: Check for saved session on mount and setup listeners
   useEffect(() => {
-    if (!clickRef) return;
+    if (runningAsExtension) {
+      // Check for existing session
+      getWalletSession().then((session) => {
+        if (session) {
+          setUser({ address: session.address, network: session.network });
+          setIsConnected(true);
+        }
+      });
+
+      // Setup external message listener (for direct extension messaging)
+      setupAuthListener((session: WalletSession) => {
+        console.log("[WalletConnect] Session received via external message:", session);
+        setUser({ address: session.address, network: session.network });
+        setIsConnected(true);
+        setLoading(false);
+      });
+
+      // Setup storage change listener (for content script bridge)
+      const handleStorageChange = (
+        changes: { [key: string]: chrome.storage.StorageChange },
+        areaName: string
+      ) => {
+        if (areaName !== "local") return;
+
+        console.log("[WalletConnect] Storage changed:", changes);
+
+        // Check for wallet session update
+        if (changes.trex_wallet_session?.newValue) {
+          const session = changes.trex_wallet_session.newValue;
+          console.log("[WalletConnect] New wallet session:", session);
+          setUser({ address: session.address, network: session.network });
+          setIsConnected(true);
+          setLoading(false);
+        }
+
+        // Check for wallet disconnection
+        if (
+          changes.trex_wallet_connected?.oldValue === true &&
+          changes.trex_wallet_connected?.newValue === undefined
+        ) {
+          console.log("[WalletConnect] Wallet disconnected via storage");
+          setUser(null);
+          setIsConnected(false);
+        }
+      };
+
+      chrome.storage.onChanged.addListener(handleStorageChange);
+
+      return () => {
+        chrome.storage.onChanged.removeListener(handleStorageChange);
+      };
+    }
+  }, [setUser, setIsConnected]);
+
+  // Web: Use CSPR.click SDK directly
+  useEffect(() => {
+    if (runningAsExtension || !clickRef) return;
 
     const handleSignedIn = async (evt: any) => {
       const account = evt.account || evt.detail?.account || evt.detail;
@@ -52,15 +120,22 @@ export function WalletConnect() {
   }, [clickRef, setIsConnected, setUser, isConnected]);
 
   const handleConnect = async () => {
-    if (!clickRef) {
-      setLoading(true);
-      // Wait a bit for SDK to initialize
-      setTimeout(() => {
-        setLoading(false);
-      }, 1000);
+    setLoading(true);
+
+    // Extension: Open localhost auth page
+    if (runningAsExtension) {
+      openAuthPage();
+      // Loading will be cleared when we receive session from localhost
+      // Add timeout fallback
+      setTimeout(() => setLoading(false), 30000);
       return;
     }
-    setLoading(true);
+
+    // Web: Use CSPR.click SDK
+    if (!clickRef) {
+      setTimeout(() => setLoading(false), 1000);
+      return;
+    }
     try {
       await clickRef.signIn();
     } catch (err) {
@@ -70,6 +145,15 @@ export function WalletConnect() {
   };
 
   const handleDisconnect = async () => {
+    // Extension: Clear stored session
+    if (runningAsExtension) {
+      await clearWalletSession();
+      setIsConnected(false);
+      setUser(null);
+      return;
+    }
+
+    // Web: Use CSPR.click SDK
     if (!clickRef) return;
     try {
       await clickRef.signOut();
@@ -105,9 +189,20 @@ export function WalletConnect() {
         <button
           onClick={handleConnect}
           disabled={loading}
-          className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-primary-600 to-secondary text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg"
+          className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-primary-600 to-secondary text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg flex items-center justify-center gap-2"
         >
-          {loading ? "Connecting..." : "Connect Wallet"}
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+              Connecting...
+            </>
+          ) : runningAsExtension ? (
+            <>
+              Connect via Web <ExternalLink className="w-4 h-4" />
+            </>
+          ) : (
+            "Connect Wallet"
+          )}
         </button>
       </div>
     );

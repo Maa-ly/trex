@@ -602,6 +602,52 @@ chrome.runtime.onMessageExternal.addListener(
   (request, sender, sendResponse) => {
     console.log("[Trex Bridge] External message from:", sender.url);
 
+    // Handle WALLET_CONNECTED from localhost auth page
+    if (request.type === "WALLET_CONNECTED" && request.session) {
+      console.log(
+        "[Trex Bridge] Wallet connected from localhost:",
+        request.session
+      );
+      chrome.storage.local.set({
+        trex_wallet_session: request.session,
+        trex_wallet_connected: true,
+      });
+
+      // Notify any open extension popup to refresh
+      chrome.runtime
+        .sendMessage({
+          type: "WALLET_SESSION_UPDATED",
+          session: request.session,
+        })
+        .catch(() => {
+          // Ignore error if popup is not open
+        });
+
+      sendResponse({ success: true });
+      return;
+    }
+
+    // Handle WALLET_DISCONNECTED from localhost
+    if (request.type === "WALLET_DISCONNECTED") {
+      console.log("[Trex Bridge] Wallet disconnected from localhost");
+      chrome.storage.local.remove([
+        "trex_wallet_session",
+        "trex_wallet_connected",
+      ]);
+
+      // Notify any open extension popup
+      chrome.runtime
+        .sendMessage({
+          type: "WALLET_SESSION_CLEARED",
+        })
+        .catch(() => {
+          // Ignore error if popup is not open
+        });
+
+      sendResponse({ success: true });
+      return;
+    }
+
     // Handle SESSION_SYNC from web app
     if (request.type === "SESSION_SYNC" && request.source === "trex-web") {
       console.log("[Trex Bridge] Received session sync from web app");

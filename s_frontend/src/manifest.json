@@ -21,8 +21,9 @@
     "history"
   ],
   "host_permissions": [
-    "https://*/*",
-    "http://*/*",
+    "http://localhost/*",
+    "https://*.trex.io/*",
+    "https://*.vercel.app/*",
     "https://cdn.cspr.click/*",
     "https://accounts.cspr.click/*",
     "https://*.cspr.click/*",
@@ -40,7 +41,26 @@
     "https://*.goodreads.com/*",
     "https://*.mangadex.org/*",
     "https://*.myanimelist.net/*",
-    "https://*.anilist.co/*"
+    "https://*.anilist.co/*",
+    "https://*.webtoons.com/*",
+    "https://*.moviebox.ph/*",
+    "https://*.9animetv.to/*",
+    "https://*.gogoanime.hu/*",
+    "https://*.anitaku.to/*",
+    "https://*.zoro.to/*",
+    "https://*.aniwatch.to/*",
+    "https://*.hianime.to/*",
+    "https://*.aniwave.to/*",
+    "https://*.comick.io/*",
+    "https://*.mangakakalot.com/*",
+    "https://*.manganato.com/*",
+    "https://*.tapas.io/*",
+    "https://*.soap2day.to/*",
+    "https://*.fmovies.to/*",
+    "https://*.solarmovie.pe/*",
+    "https://*.twitch.tv/*",
+    "https://*.bilibili.com/*",
+    "https://*.filmboom.top/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.ts",
@@ -58,20 +78,6 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*.netflix.com/*",
-        "https://*.youtube.com/watch*",
-        "https://*.youtube.com/shorts/*",
-        "https://*.primevideo.com/*",
-        "https://*.amazon.com/gp/video/*",
-        "https://*.disneyplus.com/*",
-        "https://*.hulu.com/watch/*",
-        "https://*.crunchyroll.com/watch/*",
-        "https://*.webtoons.com/*",
-        "https://filmboom.top/*",
-        "https://*.goodreads.com/book/*",
-        "https://*.mangadex.org/chapter/*",
-        "https://*.myanimelist.net/anime/*",
-        "https://*.anilist.co/anime/*",
         "http://localhost/*",
         "https://*.trex.io/*",
         "https://*.vercel.app/*"
@@ -82,7 +88,7 @@
   ],
   "options_page": "src/options/index.html",
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://cdn.cspr.click https://accounts.cspr.click https://*.cspr.click https://*.casperlabs.io https://*.casper.network wss://relay.walletconnect.com;"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https: wss: data:; frame-src https: data:; img-src 'self' https: data:;"
   },
   "externally_connectable": {
     "matches": [

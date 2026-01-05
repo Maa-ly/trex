@@ -46,6 +46,8 @@ export default defineConfig(({ mode }) => {
       hmr: {
         port: 5173,
       },
+      // No CSP for dev server - allows all connections for CSPR.click SDK
+      // Production should use proper CSP headers via server config
     },
   };
 });
