@@ -1,14 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Calendar, Loader2, Sparkles, Trophy } from "lucide-react";
-import { useClickRef } from "@make-software/csprclick-ui";
 import type { MediaItem } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
-import {
-  mintCompletionNFT,
-  MediaType,
-  TransactionStatus,
-} from "@/services/casperContract";
+import { mintCompletion, mapTrackedType } from "@/services/nft";
 import { OpenCookieImageIcon, VeryCoinImageIcon } from "@/components/AppIcons";
 
 interface MintNFTModalProps {
@@ -24,7 +19,6 @@ export function MintNFTModal({
   onClose,
   onSuccess,
 }: MintNFTModalProps) {
-  const clickRef = useClickRef();
   const { currentAccount, addToast, addCompletion } = useAppStore();
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
@@ -35,27 +29,9 @@ export function MintNFTModal({
   const [isSuccess, setIsSuccess] = useState(false);
   const [mintingStatus, setMintingStatus] = useState<string>("");
 
-  // Map media type to Casper contract MediaType enum
-  const getMediaType = (type: string): MediaType => {
-    const typeMap: { [key: string]: MediaType } = {
-      movie: MediaType.Movie,
-      anime: MediaType.Anime,
-      comic: MediaType.Comic,
-      book: MediaType.Book,
-      manga: MediaType.Manga,
-      show: MediaType.Show,
-    };
-    return typeMap[type.toLowerCase()] || MediaType.Movie;
-  };
-
   const handleMint = async () => {
-    if (!currentAccount) {
+    if (!currentAccount?.address) {
       addToast({ type: "error", message: "Please connect your wallet first" });
-      return;
-    }
-
-    if (!clickRef) {
-      addToast({ type: "error", message: "Wallet connection not ready" });
       return;
     }
 
@@ -63,52 +39,50 @@ export function MintNFTModal({
     setMintingStatus("Preparing transaction...");
 
     try {
-      // Create unique media ID
-      const mediaId = media.externalId || `${media.type}-${media.id}`;
-      const mediaType = getMediaType(media.type);
+      // Use the media URL as the unique identifier
+      const mediaUrl = media.externalId || `https://trex.app/media/${media.id}`;
+      const mediaType = mapTrackedType(media.type);
 
-      // Status update callback
-      const onStatusUpdate = (status: string, data: any) => {
-        console.log("[Trex] Minting status:", status, data);
-
-        if (status === TransactionStatus.PENDING) {
-          setMintingStatus("Waiting for wallet confirmation...");
-        } else if (status === TransactionStatus.SENT) {
-          setMintingStatus("Transaction sent to network...");
-        } else if (status === TransactionStatus.PROCESSED) {
-          setMintingStatus("Processing transaction...");
-        }
-      };
-
-      // Call Casper smart contract
-      const result = await mintCompletionNFT(
-        clickRef,
-        mediaId,
+      console.log("[Trex MintNFTModal] Starting mint:", {
+        userAddress: currentAccount.address,
+        mediaUrl,
         mediaType,
-        media.title,
-        onStatusUpdate
+        mediaTitle: media.title,
+      });
+
+      setMintingStatus("Requesting signature...");
+
+      // Call the nft.ts service with the correct signature
+      const result = await mintCompletion(
+        currentAccount.address,
+        mediaUrl,
+        mediaType,
+        rating || 5,
+        review || "",
+        completedDate
       );
 
-      if (result?.cancelled) {
-        addToast({ type: "info", message: "Minting cancelled" });
+      if (!result.success) {
+        // Show user-friendly error message
+        const errorMsg = result.error || "Failed to mint NFT";
+        addToast({
+          type: "error",
+          message: errorMsg,
+        });
         setIsMinting(false);
         setMintingStatus("");
         return;
-      }
-
-      if (result?.error) {
-        throw new Error(result.error);
       }
 
       // Add to local state
       addCompletion({
         id: `nft-${Date.now()}`,
         tokenId:
-          result?.transactionHash || result?.deployHash || `nft-${Date.now()}`,
+          result.tokenId || result.transactionHash || `nft-${Date.now()}`,
         mediaId: media.id,
         media: media,
         mintedAt: new Date(),
-        transactionHash: result?.transactionHash || result?.deployHash || "",
+        transactionHash: result.transactionHash || "",
         completedAt: new Date(completedDate),
         rating: rating > 0 ? rating : undefined,
         review: review.trim() || undefined,

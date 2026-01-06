@@ -248,6 +248,28 @@ textarea {
   color: white !important;
 }
 
+/* Transparent input override for specific components - use higher specificity */
+input.trex-transparent-input,
+.trex-transparent-input {
+  background-color: transparent !important;
+  background: transparent !important;
+  -webkit-box-shadow: none !important;
+  box-shadow: none !important;
+}
+
+input.trex-transparent-input:-webkit-autofill,
+input.trex-transparent-input:-webkit-autofill:hover,
+input.trex-transparent-input:-webkit-autofill:focus,
+input.trex-transparent-input:-webkit-autofill:active,
+.trex-transparent-input:-webkit-autofill,
+.trex-transparent-input:-webkit-autofill:hover,
+.trex-transparent-input:-webkit-autofill:focus,
+.trex-transparent-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-text-fill-color: white !important;
+  background-color: transparent !important;
+}
+
 /* Override autofill background */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,

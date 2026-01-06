@@ -100,7 +100,7 @@ export function CustomDropdown({
                 width: `${dropdownPosition.width}px`,
                 zIndex: 99999,
               }}
-              className="bg-dark-800/98 backdrop-blur-2xl border border-dark-600 rounded-xl shadow-xl overflow-hidden"
+              className="bg-dark-800 backdrop-blur-3xl border border-dark-600 rounded-xl shadow-xl overflow-hidden"
             >
               <div className="py-1 max-h-60 overflow-y-auto">
                 {options.map((option) => (

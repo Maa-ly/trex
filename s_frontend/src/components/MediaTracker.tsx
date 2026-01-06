@@ -19,6 +19,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import { MintNFTModal } from "@/components/MintNFTModal";
 
 // Media type options for custom sites
 const MEDIA_TYPES = [
@@ -94,27 +95,43 @@ const SUPPORTED_PLATFORMS: Record<string, { domains: string[]; url: string }> =
       url: "https://www.webtoons.com/en/",
     },
     MovieBox: { domains: ["moviebox.ph"], url: "https://moviebox.ph" },
+    // Filmboom: { domains: ["filmboom.top"], url: "https://filmboom.top" },
   };
 
 // Additional platforms shown in expanded list
 const MORE_PLATFORMS: Record<string, { domains: string[]; url: string }> = {
   MyAnimeList: { domains: ["myanimelist.net"], url: "https://myanimelist.net" },
   AniList: { domains: ["anilist.co"], url: "https://anilist.co" },
-  "9anime": { domains: ["9animetv.to"], url: "https://9animetv.to" },
-  GogoAnime: { domains: ["gogoanime.hu"], url: "https://gogoanime.hu" },
+  "9anime": {
+    domains: ["9animetv.to", "9anime.to"],
+    url: "https://9animetv.to",
+  },
+  GogoAnime: {
+    domains: ["gogoanime.hu", "gogoanime.gg", "anitaku.to"],
+    url: "https://gogoanime.hu",
+  },
   HiAnime: { domains: ["hianime.to"], url: "https://hianime.to" },
   AniWave: { domains: ["aniwave.to"], url: "https://aniwave.to" },
+  Zoro: { domains: ["zoro.to", "aniwatch.to"], url: "https://zoro.to" },
+  AnimePahe: {
+    domains: ["animepahe.com", "animepahe.ru"],
+    url: "https://animepahe.com",
+  },
   Comick: { domains: ["comick.io"], url: "https://comick.io" },
   Mangakakalot: {
-    domains: ["mangakakalot.com"],
+    domains: ["mangakakalot.com", "manganato.com"],
     url: "https://mangakakalot.com",
   },
   Fmovies: { domains: ["fmovies.to"], url: "https://fmovies.to" },
   SolarMovie: { domains: ["solarmovie.pe"], url: "https://solarmovie.pe" },
+  Hurawatch: { domains: ["hurawatch.tw"], url: "https://hurawatch.tw" },
+  Soap2day: { domains: ["soap2day.to"], url: "https://soap2day.to" },
+  KissKH: { domains: ["kisskh.id"], url: "https://kisskh.id" },
+  DramaCool: { domains: ["dramacool.sr"], url: "https://dramacool.sr" },
   Tapas: { domains: ["tapas.io"], url: "https://tapas.io" },
+  Bato: { domains: ["bato.to"], url: "https://bato.to" },
   Twitch: { domains: ["twitch.tv"], url: "https://twitch.tv" },
   Bilibili: { domains: ["bilibili.com"], url: "https://bilibili.com" },
-  MovieBox: { domains: ["moviebox.ph"], url: "https://moviebox.ph" },
 };
 
 // Combined for detection
@@ -317,6 +334,69 @@ export function MediaTracker({
     type: "movie",
   });
   const [mediaTypeDropdownOpen, setMediaTypeDropdownOpen] = useState(false);
+  const [showTestList, setShowTestList] = useState(false);
+  const [showMintModal, setShowMintModal] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<TrackedMedia | null>(null);
+
+  // Test data for extension testing
+  const testDataList: TrackedMedia[] = [
+    {
+      id: `test-mint-comic-${Date.now()}`,
+      platform: "webtoon",
+      type: "comic",
+      title: "The Amazing Spider-Man (2022) - Episode 13",
+      url: "https://www.webtoons.com/en/graphic-novel/the-amazing-spider-man-2022/episode-13/viewer?title_no=8475&episode_no=13",
+      progress: 100,
+      watchTime: 35,
+      thumbnail:
+        "https://swebtoon-phinf.pstatic.net/20250826_197/1756157211282A8V5q_JPEG/TheAmazingSpiderMan_EpisodeList_Mobile.jpg?type=crop540_540",
+      completed: true,
+      startTime: Date.now(),
+      lastUpdate: Date.now(),
+    },
+    {
+      id: `test-mint-video-${Date.now()}`,
+      platform: "youtube",
+      type: "video",
+      title: "$30 vs $630 Smartwatch (oraimo vs Apple)",
+      url: "https://www.youtube.com/watch?v=oUbGya-2vJI",
+      progress: 4,
+      watchTime: 500,
+      thumbnail: "https://img.youtube.com/vi/oUbGya-2vJI/maxresdefault.jpg",
+      completed: true,
+      startTime: Date.now(),
+      lastUpdate: Date.now(),
+    },
+    {
+      id: `test-mint-manga-${Date.now()}`,
+      platform: "webtoon",
+      type: "manga",
+      title: "Love 4 a Walk (S2) Episode 78",
+      url: "https://www.webtoons.com/en/romance/love-4-a-walk/s2-episode-78/viewer?title_no=6278&episode_no=79",
+      progress: 100,
+      watchTime: 243,
+      thumbnail:
+        "https://swebtoon-phinf.pstatic.net/20240403_279/1712082286574qY5hC_JPEG/6Love-4-A-Walk_EpisodeList_Mobile.jpg?type=crop540_540",
+      completed: true,
+      startTime: Date.now(),
+      lastUpdate: Date.now(),
+    },
+  ];
+
+  const loadTestData = async (index: number) => {
+    const testMedia = testDataList[index];
+    setPendingMints((prev) => [...prev, testMedia]);
+    setShowTestList(false);
+
+    // Also update chrome storage
+    if (isExtension) {
+      const result = await chrome.storage.local.get(["pendingMints"]);
+      const existing = result.pendingMints || [];
+      await chrome.storage.local.set({
+        pendingMints: [...existing, testMedia],
+      });
+    }
+  };
 
   // Detect current active tab site
   useEffect(() => {
@@ -391,12 +471,30 @@ export function MediaTracker({
           isEnabled = origins.some((o) => o.includes(platformDomain));
         }
 
+        // Check if tracking is active for this site
+        const isCurrentlyTracking = activeTracking.some((t) => {
+          const trackingHostname = new URL(t.url).hostname.replace("www.", "");
+          return (
+            trackingHostname.includes(hostname) ||
+            hostname.includes(trackingHostname)
+          );
+        });
+
+        console.log("[Trex Popup] Current site detection:", {
+          hostname,
+          platformName,
+          isEnabled,
+          isTracking: isCurrentlyTracking,
+          activeTrackingCount: activeTracking.length,
+          activeTrackingUrls: activeTracking.map((t) => t.url),
+        });
+
         setCurrentSite({
           url: tab.url,
           hostname,
           isSupported: platformName !== null,
           platformName,
-          isTracking: activeTracking.some((t) => t.url.includes(hostname)),
+          isTracking: isCurrentlyTracking,
           isEnabled,
           domain: platformDomain,
         });
@@ -419,6 +517,10 @@ export function MediaTracker({
           "pendingMints",
           "trackingEnabled",
         ]);
+        console.log("[Trex Popup] Loaded tracking data:", {
+          activeTracking: result.activeTracking,
+          count: result.activeTracking?.length || 0,
+        });
         if (result.activeTracking) {
           setActiveTracking(result.activeTracking);
         }
@@ -435,13 +537,21 @@ export function MediaTracker({
 
     loadTrackingData();
 
+    // Poll for updates every 2 seconds (backup for when storage changes don't fire)
+    const pollInterval = setInterval(loadTrackingData, 2000);
+
     // Listen for storage changes
     const handleStorageChange = (
       changes: { [key: string]: chrome.storage.StorageChange },
       areaName: string
     ) => {
+      console.log("[Trex Popup] Storage changed:", areaName, changes);
       if (areaName === "local") {
         if (changes.activeTracking?.newValue) {
+          console.log(
+            "[Trex Popup] Active tracking updated:",
+            changes.activeTracking.newValue
+          );
           setActiveTracking(changes.activeTracking.newValue);
         }
         if (changes.pendingMints?.newValue) {
@@ -451,7 +561,10 @@ export function MediaTracker({
     };
 
     chrome.storage.onChanged.addListener(handleStorageChange);
-    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   // Enable tracking for a supported but disabled site
@@ -476,7 +589,7 @@ export function MediaTracker({
           try {
             await chrome.scripting.executeScript({
               target: { tabId: tabs[0].id },
-              files: ["src/content/media-tracker.ts"],
+              files: ["src/content/media-tracker.js"],
             });
             console.log("[Trex] Content script injected");
           } catch (err) {
@@ -502,7 +615,7 @@ export function MediaTracker({
           try {
             await chrome.scripting.executeScript({
               target: { tabId: tabs[0].id },
-              files: ["src/content/media-tracker.ts"],
+              files: ["src/content/media-tracker.js"],
             });
             console.log("[Trex] Content script injected");
           } catch (err) {
@@ -593,7 +706,7 @@ export function MediaTracker({
           try {
             await chrome.scripting.executeScript({
               target: { tabId: tabs[0].id },
-              files: ["src/content/media-tracker.ts"],
+              files: ["src/content/media-tracker.js"],
             });
             console.log("[Trex] Content script injected into custom site");
           } catch (err) {
@@ -633,8 +746,8 @@ export function MediaTracker({
   };
 
   const handleMint = (media: TrackedMedia) => {
-    // TODO: Open mint modal or redirect to mint page
-    console.log("Mint NFT for:", media);
+    setSelectedMedia(media);
+    setShowMintModal(true);
   };
 
   const handleDismiss = (id: string) => {
@@ -811,6 +924,42 @@ export function MediaTracker({
         </motion.div>
       )}
 
+      {/* Test Data Button - For testing extension functionality */}
+      {isConnected && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="relative"
+        >
+          <button
+            onClick={() => setShowTestList(!showTestList)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-dark-800 border border-dark-700 text-dark-300 hover:text-white hover:border-coral/50 transition-colors"
+          >
+            <Play className="w-4 h-4" />
+            Load Test Data for Minting
+          </button>
+          {showTestList && (
+            <div className="absolute top-full mt-2 left-0 right-0 bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-50">
+              {testDataList.map((data, index) => (
+                <button
+                  key={index}
+                  onClick={() => loadTestData(index)}
+                  className="w-full text-left px-4 py-3 hover:bg-dark-700 transition-colors border-b border-dark-700 last:border-0"
+                >
+                  <p className="text-white text-sm font-medium truncate">
+                    {data.title}
+                  </p>
+                  <p className="text-dark-400 text-xs capitalize">
+                    {data.type} • {data.platform}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Supported Platforms Quick List */}
       {!allTrackedMedia.length && (
         <div className="card-glass p-3">
@@ -896,7 +1045,7 @@ export function MediaTracker({
                     onChange={(e) =>
                       setNewSite({ ...newSite, name: e.target.value })
                     }
-                    className="w-full px-3 py-2 bg-dark rounded-lg text-xs text-white 
+                    className="trex-transparent-input w-full px-3 py-2 rounded-lg text-xs text-white 
                              border border-white/10 focus:border-primary-400 outline-none
                              placeholder:text-white/30"
                   />
@@ -913,7 +1062,7 @@ export function MediaTracker({
                     onChange={(e) =>
                       setNewSite({ ...newSite, domain: e.target.value })
                     }
-                    className="w-full px-3 py-2 bg-dark rounded-lg text-xs text-white 
+                    className="trex-transparent-input w-full px-3 py-2 rounded-lg text-xs text-white 
                              border border-white/10 focus:border-primary-400 outline-none
                              placeholder:text-white/30"
                   />
@@ -946,8 +1095,8 @@ export function MediaTracker({
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
-                          className="absolute top-full left-0 right-0 mt-1 bg-dark border border-white/10 
-                                   rounded-lg overflow-hidden z-10 shadow-lg"
+                          className="absolute top-full left-0 right-0 mt-1 glass-dark
+                                   rounded-lg overflow-hidden z-10 shadow-xl shadow-black/20"
                         >
                           {MEDIA_TYPES.map((type) => (
                             <button
@@ -957,7 +1106,7 @@ export function MediaTracker({
                                 setNewSite({ ...newSite, type: type.value });
                                 setMediaTypeDropdownOpen(false);
                               }}
-                              className={`w-full px-3 py-2 text-xs text-left hover:bg-white/10 transition-colors
+                              className={`w-full px-3 py-2 text-xs text-left hover:bg-white/5 transition-colors
                                 ${
                                   newSite.type === type.value
                                     ? "bg-primary-500/20 text-primary-400"
@@ -1001,6 +1150,36 @@ export function MediaTracker({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Mint NFT Modal */}
+      {selectedMedia && (
+        <MintNFTModal
+          media={{
+            id: selectedMedia.id,
+            externalId: selectedMedia.url,
+            title: selectedMedia.title,
+            type: selectedMedia.type as any,
+            description: `Completed on ${new Date(
+              selectedMedia.lastUpdate
+            ).toLocaleDateString()}`,
+            coverImage: selectedMedia.thumbnail || "",
+            releaseYear: new Date().getFullYear(),
+            creator: selectedMedia.platform,
+            genre: [selectedMedia.type],
+            totalCompletions: 0,
+          }}
+          isOpen={showMintModal}
+          onClose={() => {
+            setShowMintModal(false);
+            setSelectedMedia(null);
+          }}
+          onSuccess={() => {
+            handleDismiss(selectedMedia.id);
+            setShowMintModal(false);
+            setSelectedMedia(null);
+          }}
+        />
+      )}
     </div>
   );
 }

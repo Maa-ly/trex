@@ -23,7 +23,7 @@ Choose one method:
 
 - Click the **"Load unpacked"** button (top-left area)
 - A file browser will open
-- Navigate to: `/Users/dreytech/Projects/Trex/s_frontend/dist`
+- Navigate to: `/Trex/s_frontend/dist`
 - Click **"Select"** or **"Open"**
 
 ### 4. Verify Installation
@@ -94,7 +94,7 @@ When you modify code:
 1. **Save your changes**
 2. **Rebuild:**
    ```bash
-   cd /Users/dreytech/Projects/Trex/s_frontend
+   cd Projects/Trex/s_frontend
    pnpm run build
    ```
 3. **Reload in Chrome:**
@@ -204,7 +204,7 @@ Your extension is built and ready to use. Load it in Chrome and enjoy!
 
 **Current Build Location:**
 ```
-/Users/dreytech/Projects/Trex/s_frontend/dist
+Trex/s_frontend/dist
 ```
 
 Need help? Check the browser console for error messages!

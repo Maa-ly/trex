@@ -128,6 +128,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Media tracking messages from content script
     case "TRACKING_START":
+      console.log(
+        "[Trex SW] TRACKING_START received from tab:",
+        sender.tab?.id
+      );
+      console.log("[Trex SW] Tracking data:", message.data);
       if (sender.tab?.id) {
         const trackingData = message.data;
         const session: TrackingSession = {
@@ -138,6 +143,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             title: trackingData.title,
             url: trackingData.url,
             progress: trackingData.progress || 0,
+            duration: trackingData.duration || 0,
+            thumbnail: trackingData.thumbnail || "",
             timestamp: Date.now(),
           },
           startTime: Date.now(),
@@ -145,7 +152,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           completed: false,
         };
         activeSessions.set(sender.tab.id, session);
-        console.log("[Trex] Tracking started:", session.mediaInfo.title);
+        console.log(
+          "[Trex SW] Tracking session created:",
+          session.mediaInfo.title
+        );
+        console.log("[Trex SW] Active sessions count:", activeSessions.size);
 
         // Store in chrome.storage for popup access
         updateActiveTrackingStorage();
@@ -432,6 +443,11 @@ function updateBadge(count: number) {
 // Update active tracking in chrome.storage for popup access
 function updateActiveTrackingStorage() {
   const sessions = Array.from(activeSessions.values());
+  console.log(
+    "[Trex SW] Updating storage with",
+    sessions.length,
+    "active sessions"
+  );
 
   // Deduplicate by URL (same video on different tabs shouldn't create duplicates)
   const uniqueSessions = new Map<string, (typeof sessions)[0]>();
@@ -457,12 +473,21 @@ function updateActiveTrackingStorage() {
     lastUpdate: Date.now(),
   }));
 
+  console.log("[Trex SW] Saving tracking data to storage:", trackingData);
+
   chrome.storage.local.set({ activeTracking: trackingData }, () => {
-    console.log(
-      "[Trex] Updated active tracking storage:",
-      trackingData.length,
-      "sessions"
-    );
+    if (chrome.runtime.lastError) {
+      console.error(
+        "[Trex SW] Error saving tracking data:",
+        chrome.runtime.lastError
+      );
+    } else {
+      console.log(
+        "[Trex SW] Updated active tracking storage:",
+        trackingData.length,
+        "sessions"
+      );
+    }
   });
 }
 
@@ -500,59 +525,223 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 export {};
 
-// Dynamic content script registration for granted origins
-chrome.permissions.getAll().then((p) => {
-  const origins = p.origins || [];
+// ==========================================
+// Dynamic Content Script Injection
+// ==========================================
+
+// Get content script path from manifest (built JS files, not TS source)
+function getContentScriptPath(): string {
   const manifest = chrome.runtime.getManifest();
-  const scriptPaths = (manifest.content_scripts || [])
-    .flatMap((cs) => cs.js || [])
-    .filter((s): s is string => typeof s === "string") as string[];
-  if (origins.length && scriptPaths.length) {
-    chrome.scripting.registerContentScripts([
+  const scripts = manifest.content_scripts?.[0]?.js || [];
+  // The manifest contains the built .js paths after vite build
+  return scripts[0] || "src/content/media-tracker.js";
+}
+
+// Register content scripts for granted origins
+async function registerDynamicContentScripts(origins: string[]) {
+  if (!origins.length) {
+    console.log("[Trex] No origins to register");
+    return;
+  }
+
+  const scriptPath = getContentScriptPath();
+  console.log("[Trex] Registering content scripts for:", origins);
+  console.log("[Trex] Using script path:", scriptPath);
+
+  try {
+    // First, try to unregister existing scripts to avoid conflicts
+    try {
+      await chrome.scripting.unregisterContentScripts({
+        ids: ["trex-dynamic"],
+      });
+      console.log("[Trex] Unregistered existing dynamic script");
+    } catch {
+      // Ignore - script may not exist
+    }
+
+    // Register new content scripts
+    await chrome.scripting.registerContentScripts([
       {
         id: "trex-dynamic",
         matches: origins,
-        js: scriptPaths,
+        js: [scriptPath],
         runAt: "document_idle",
+        allFrames: false,
+        persistAcrossSessions: true,
       },
     ]);
+    console.log(
+      "[Trex] Content scripts registered successfully for",
+      origins.length,
+      "origins"
+    );
+  } catch (error) {
+    console.error("[Trex] Failed to register content scripts:", error);
+    // Try to get more details about the error
+    if (error instanceof Error) {
+      console.error("[Trex] Error details:", error.message);
+    }
+  }
+}
+
+// Inject content script into a specific tab
+async function injectContentScript(tabId: number, forceInject = false) {
+  const scriptPath = getContentScriptPath();
+  console.log("[Trex] Attempting to inject content script into tab:", tabId);
+
+  if (!forceInject) {
+    try {
+      // Check if script is already injected by sending a ping
+      const results = await chrome.tabs
+        .sendMessage(tabId, { type: "PING" })
+        .catch(() => null);
+      if (results) {
+        console.log(
+          "[Trex] Content script already active in tab:",
+          tabId,
+          results
+        );
+        // Tell it to re-initialize tracking
+        chrome.tabs.sendMessage(tabId, { type: "REINITIALIZE" });
+        return true;
+      }
+    } catch {
+      // Script not injected yet, continue
+      console.log("[Trex] No response from content script, will inject");
+    }
+  }
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: [scriptPath],
+    });
+    console.log("[Trex] Content script injected successfully into tab:", tabId);
+    return true;
+  } catch (error) {
+    console.warn("[Trex] Failed to inject content script:", error);
+    if (error instanceof Error) {
+      console.warn("[Trex] Injection error details:", error.message);
+    }
+    return false;
+  }
+}
+
+// Initialize content scripts on startup
+chrome.permissions.getAll().then((permissions) => {
+  const origins = permissions.origins || [];
+  console.log("[Trex] Startup - current permissions:", origins);
+  if (origins.length > 0) {
+    registerDynamicContentScripts(origins);
   }
 });
 
-chrome.permissions.onAdded.addListener(async (p) => {
-  const origins = p.origins || [];
-  const manifest = chrome.runtime.getManifest();
-  const scriptPaths = (manifest.content_scripts || [])
-    .flatMap((cs) => cs.js || [])
-    .filter((s): s is string => typeof s === "string") as string[];
-  if (origins.length && scriptPaths.length) {
-    chrome.scripting.registerContentScripts([
-      {
-        id: "trex-dynamic",
-        matches: origins,
-        js: scriptPaths,
-        runAt: "document_idle",
-      },
-    ]);
+console.log("[Trex] Service worker loaded");
 
-    // Fallback: inject into active tab immediately
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
-    if (tab?.id) {
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: scriptPaths,
+// Handle new permissions being granted
+chrome.permissions.onAdded.addListener(async (permissions) => {
+  const origins = permissions.origins || [];
+  console.log("[Trex] New permissions granted:", origins);
+
+  if (origins.length > 0) {
+    // Get all current permissions and register scripts for future page loads
+    const allPermissions = await chrome.permissions.getAll();
+    console.log("[Trex] All permissions:", allPermissions.origins);
+    await registerDynamicContentScripts(allPermissions.origins || []);
+
+    // Inject into ALL tabs that match the new origins immediately
+    const allTabs = await chrome.tabs.query({});
+    console.log("[Trex] Checking", allTabs.length, "tabs for injection");
+
+    for (const tab of allTabs) {
+      if (tab.id && tab.url && !tab.url.startsWith("chrome://")) {
+        // Check if the tab URL matches any of the new origins
+        const matches = origins.some((origin) => {
+          // Convert pattern like https://*.example.com/* to regex
+          const pattern = origin
+            .replace(/[.+?^${}()|[\]\\]/g, "\\$&") // Escape special regex chars first
+            .replace(/\\\*/g, ".*"); // Then convert * to .*
+          try {
+            return new RegExp(`^${pattern}$`).test(tab.url || "");
+          } catch {
+            // Fallback: simple includes check
+            const domain = origin
+              .replace(/https?:\/\/\*?\.?/, "")
+              .replace(/\/\*$/, "");
+            return (tab.url || "").includes(domain);
+          }
         });
-      } catch (e) {
-        console.warn("[Trex] executeScript failed", e);
+
+        if (matches) {
+          console.log("[Trex] Tab matches new permission, injecting:", tab.url);
+          await injectContentScript(tab.id, true); // Force inject
+        }
       }
     }
   }
 });
 
-chrome.permissions.onRemoved.addListener(() => {
-  chrome.scripting.unregisterContentScripts({ ids: ["trex-dynamic"] });
+// Handle permissions being removed
+chrome.permissions.onRemoved.addListener(async () => {
+  console.log("[Trex] Permissions removed, updating content scripts");
+  try {
+    await chrome.scripting.unregisterContentScripts({ ids: ["trex-dynamic"] });
+  } catch {
+    // Ignore
+  }
+
+  // Re-register with remaining permissions
+  const permissions = await chrome.permissions.getAll();
+  if (permissions.origins && permissions.origins.length > 0) {
+    await registerDynamicContentScripts(permissions.origins);
+  }
+});
+
+// Handle tab updates - inject script if needed
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (
+    changeInfo.status === "complete" &&
+    tab.url &&
+    !tab.url.startsWith("chrome://")
+  ) {
+    try {
+      const url = new URL(tab.url);
+      // Try multiple permission patterns
+      const patterns = [
+        url.origin + "/*",
+        `https://*.${url.hostname.replace(/^www\./, "")}/*`,
+        `https://${url.hostname}/*`,
+      ];
+
+      let hasPermission = false;
+      for (const pattern of patterns) {
+        try {
+          hasPermission = await chrome.permissions.contains({
+            origins: [pattern],
+          });
+          if (hasPermission) {
+            console.log("[Trex] Tab has permission via pattern:", pattern);
+            break;
+          }
+        } catch {
+          // Pattern may be invalid, try next
+        }
+      }
+
+      if (hasPermission) {
+        // Small delay to ensure page is ready
+        setTimeout(() => {
+          console.log(
+            "[Trex] Injecting content script on tab update:",
+            tab.url
+          );
+          injectContentScript(tabId);
+        }, 500);
+      }
+    } catch (e) {
+      console.warn("[Trex] Error checking tab permission:", e);
+    }
+  }
 });
 
 // ==========================================

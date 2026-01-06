@@ -186,7 +186,7 @@ function CustomDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 bg-dark-light rounded-xl text-sm text-white border border-white/10 
+        className="w-full px-4 py-3 bg-transparent rounded-xl text-sm text-white border border-white/10 
                    focus:border-primary-400 outline-none flex items-center justify-between"
       >
         <span>{selectedOption?.label || "Select type"}</span>
@@ -202,7 +202,7 @@ function CustomDropdown({
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="absolute top-full left-0 right-0 mt-1 bg-dark-light border border-white/10 
+            className="absolute top-full left-0 right-0 mt-1 bg-dark-light/95 backdrop-blur-xl border border-white/10 
                        rounded-xl overflow-hidden z-50 shadow-xl"
           >
             {options.map((option) => (
@@ -483,9 +483,11 @@ export function OptionsApp() {
                     </h2>
                     <button
                       onClick={() => setShowAddSite(true)}
-                      className="px-4 py-2 bg-primary-500 text-white text-sm rounded-lg hover:bg-primary-600 transition-colors"
+                      className="px-4 py-2.5 bg-dark-light border border-white/10 rounded-xl text-white text-sm font-medium
+                               hover:bg-primary-500/10 hover:border-primary-500/50 transition-all flex items-center gap-2"
                     >
-                      + Add Site
+                      <Plus className="w-4 h-4" />
+                      Add Site
                     </button>
                   </div>
 
@@ -557,7 +559,7 @@ export function OptionsApp() {
                               onChange={(e) =>
                                 setNewSite({ ...newSite, name: e.target.value })
                               }
-                              className="w-full px-4 py-3 bg-dark-light rounded-xl text-sm text-white 
+                              className="w-full px-4 py-3 bg-transparent rounded-xl text-sm text-white 
                                        border border-white/10 focus:border-primary-400 outline-none
                                        placeholder:text-white/30"
                             />
@@ -576,7 +578,7 @@ export function OptionsApp() {
                                   domain: e.target.value,
                                 })
                               }
-                              className="w-full px-4 py-3 bg-dark-light rounded-xl text-sm text-white 
+                              className="w-full px-4 py-3 bg-transparent rounded-xl text-sm text-white 
                                        border border-white/10 focus:border-primary-400 outline-none
                                        placeholder:text-white/30"
                             />

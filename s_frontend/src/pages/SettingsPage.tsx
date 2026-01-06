@@ -41,7 +41,6 @@ const defaultPlatforms = [
   { name: "AniList", domain: "anilist.co", type: "anime" },
   // Free streaming sites - Movies & TV
   { name: "Hurawatch", domain: "hurawatch.tw", type: "movie" },
-  { name: "Filmboom", domain: "filmboom.top", type: "movie" },
   { name: "Moviebox", domain: "moviebox.ph", type: "movie" },
   { name: "Fmovies", domain: "ww4.fmovies.co", type: "movie" },
   { name: "SolarMovie", domain: "wwv.solarmovie.one", type: "movie" },

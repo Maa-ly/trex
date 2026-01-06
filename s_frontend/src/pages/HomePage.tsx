@@ -265,6 +265,62 @@ export function HomePage() {
   const [showMintModal, setShowMintModal] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<TrackedMedia | null>(null);
   const [currentSite, setCurrentSite] = useState<CurrentSiteInfo | null>(null);
+  const [showTestList, setShowTestList] = useState(false);
+
+  // Test data for extension testing
+  const testDataList: TrackedMedia[] = [
+    {
+      id: `test-mint-comic-${Date.now()}`,
+      platform: "webtoon",
+      type: "comic",
+      title: "The Amazing Spider-Man (2022) - Episode 13",
+      url: "https://www.webtoons.com/en/graphic-novel/the-amazing-spider-man-2022/episode-13/viewer?title_no=8475&episode_no=13",
+      progress: 100,
+      watchTime: 35,
+      thumbnail:
+        "https://swebtoon-phinf.pstatic.net/20250826_197/1756157211282A8V5q_JPEG/TheAmazingSpiderMan_EpisodeList_Mobile.jpg?type=crop540_540",
+      completed: true,
+      startTime: Date.now(),
+      lastUpdate: Date.now(),
+    },
+    {
+      id: `test-mint-video-${Date.now()}`,
+      platform: "youtube",
+      type: "video",
+      title: "$30 vs $630 Smartwatch (oraimo vs Apple)",
+      url: "https://www.youtube.com/watch?v=oUbGya-2vJI",
+      progress: 4,
+      watchTime: 500,
+      thumbnail: "https://img.youtube.com/vi/oUbGya-2vJI/maxresdefault.jpg",
+      completed: true,
+      startTime: Date.now(),
+      lastUpdate: Date.now(),
+    },
+    {
+      id: `test-mint-manga-${Date.now()}`,
+      platform: "webtoon",
+      type: "manga",
+      title: "Love 4 a Walk (S2) Episode 78",
+      url: "https://www.webtoons.com/en/romance/love-4-a-walk/s2-episode-78/viewer?title_no=6278&episode_no=79",
+      progress: 100,
+      watchTime: 243,
+      thumbnail:
+        "https://swebtoon-phinf.pstatic.net/20240403_279/1712082286574qY5hC_JPEG/6Love-4-A-Walk_EpisodeList_Mobile.jpg?type=crop540_540",
+      completed: true,
+      startTime: Date.now(),
+      lastUpdate: Date.now(),
+    },
+  ];
+
+  const loadTestData = (index: number) => {
+    const testMedia = testDataList[index];
+    useAppStore.getState().addPendingMint(testMedia);
+    setShowTestList(false);
+    addToast({
+      type: "success",
+      message: `Added "${testMedia.title}" to pending mints`,
+    });
+  };
 
   // Detect current active tab site
   useEffect(() => {
@@ -348,7 +404,20 @@ export function HomePage() {
           hostname,
           isSupported: platformName !== null,
           platformName,
-          isTracking: activeTracking.some((t) => t.url.includes(hostname)),
+          isTracking: activeTracking.some((t) => {
+            try {
+              const trackingHostname = new URL(t.url).hostname.replace(
+                "www.",
+                ""
+              );
+              return (
+                trackingHostname.includes(hostname) ||
+                hostname.includes(trackingHostname)
+              );
+            } catch {
+              return t.url.includes(hostname);
+            }
+          }),
           isEnabled,
           domain: platformDomain,
         });
@@ -376,43 +445,122 @@ export function HomePage() {
     // Only run chrome-specific code in extension context
     if (!isExtension) return;
 
-    // Load initial active tracking from storage
-    const loadActiveTracking = () => {
+    // Load active tracking from storage and sync to store
+    const loadActiveTracking = async () => {
       try {
-        chrome.storage?.local?.get(["activeTracking"], (result) => {
-          if (chrome.runtime.lastError) {
-            console.error("[Trex] Storage error:", chrome.runtime.lastError);
-            return;
-          }
-          if (result?.activeTracking && Array.isArray(result.activeTracking)) {
-            result.activeTracking.forEach((track: TrackedMedia) => {
-              useAppStore.getState().updateActiveTracking(track);
-            });
-          }
+        const result = await new Promise<{
+          activeTracking?: TrackedMedia[];
+          pendingMints?: TrackedMedia[];
+        }>((resolve) => {
+          chrome.storage?.local?.get(
+            ["activeTracking", "pendingMints"],
+            (data) => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "[Trex HomePage] Storage error:",
+                  chrome.runtime.lastError
+                );
+                resolve({});
+                return;
+              }
+              resolve(data);
+            }
+          );
         });
+
+        console.log("[Trex HomePage] Loaded tracking data:", {
+          activeTracking: result.activeTracking,
+          count: result.activeTracking?.length || 0,
+        });
+
+        // Sync active tracking to store
+        if (result.activeTracking && Array.isArray(result.activeTracking)) {
+          const store = useAppStore.getState();
+          // Clear existing and add fresh data to prevent stale entries
+          store.clearActiveTracking();
+          result.activeTracking.forEach((track: TrackedMedia) => {
+            store.updateActiveTracking(track);
+          });
+        }
+
+        // Sync pending mints to store
+        if (result.pendingMints && Array.isArray(result.pendingMints)) {
+          const store = useAppStore.getState();
+          result.pendingMints.forEach((mint: TrackedMedia) => {
+            // Only add if not already in pending
+            if (!store.pendingMints.some((p) => p.id === mint.id)) {
+              store.addPendingMint(mint);
+            }
+          });
+        }
       } catch (err) {
-        console.error("[Trex] Failed to load active tracking:", err);
+        console.error("[Trex HomePage] Failed to load active tracking:", err);
       }
     };
 
-    // Load on mount
+    // Load immediately on mount
     loadActiveTracking();
+
+    // Poll for updates every 2 seconds (backup for when storage changes don't fire)
+    const pollInterval = setInterval(loadActiveTracking, 2000);
 
     // Also get active sessions from service worker
     try {
       chrome.runtime.sendMessage(
         { type: "GET_ACTIVE_SESSIONS" },
         (response) => {
-          if (response?.success && response.data) {
-            console.log("[Trex] Active sessions:", response.data);
+          if (
+            response?.success &&
+            response.data &&
+            Array.isArray(response.data)
+          ) {
+            console.log(
+              "[Trex HomePage] Active sessions from SW:",
+              response.data.length
+            );
+            // Convert sessions to TrackedMedia format and sync
+            response.data.forEach(
+              (session: {
+                tabId: number;
+                mediaInfo: {
+                  platform: string;
+                  type: string;
+                  title: string;
+                  url: string;
+                  progress: number;
+                  duration: number;
+                  thumbnail: string;
+                };
+                startTime: number;
+                watchTime: number;
+                completed: boolean;
+              }) => {
+                const trackData: TrackedMedia = {
+                  id: `track-${session.tabId}-${session.startTime}`,
+                  platform: session.mediaInfo.platform,
+                  type: session.mediaInfo.type,
+                  title: session.mediaInfo.title,
+                  url: session.mediaInfo.url,
+                  progress: session.mediaInfo.progress || 0,
+                  duration: session.mediaInfo.duration || 0,
+                  watchTime: Math.round(session.watchTime || 0),
+                  thumbnail: session.mediaInfo.thumbnail || "",
+                  completed: session.completed || false,
+                  startTime: session.startTime,
+                  lastUpdate: Date.now(),
+                };
+                useAppStore.getState().updateActiveTracking(trackData);
+              }
+            );
           }
         }
       );
     } catch (err) {
-      console.error("[Trex] Failed to get active sessions:", err);
+      console.error("[Trex HomePage] Failed to get active sessions:", err);
     }
 
     const handleMessage = (message: { type: string; data?: TrackedMedia }) => {
+      console.log("[Trex HomePage] Message received:", message.type);
       if (message.type === "TRACKING_UPDATE" && message.data) {
         useAppStore.getState().updateActiveTracking(message.data);
       }
@@ -426,14 +574,40 @@ export function HomePage() {
       changes: { [key: string]: chrome.storage.StorageChange },
       areaName: string
     ) => {
-      if (areaName === "local" && changes.activeTracking) {
-        const newTracking = changes.activeTracking.newValue;
-        if (Array.isArray(newTracking)) {
-          // Clear and update
-          useAppStore.getState().clearActiveTracking();
-          newTracking.forEach((track: TrackedMedia) => {
-            useAppStore.getState().updateActiveTracking(track);
-          });
+      console.log(
+        "[Trex HomePage] Storage changed:",
+        areaName,
+        Object.keys(changes)
+      );
+      if (areaName === "local") {
+        if (changes.activeTracking) {
+          const newTracking = changes.activeTracking.newValue;
+          console.log(
+            "[Trex HomePage] Active tracking updated:",
+            newTracking?.length || 0,
+            "items"
+          );
+          if (Array.isArray(newTracking)) {
+            // Clear and update
+            useAppStore.getState().clearActiveTracking();
+            newTracking.forEach((track: TrackedMedia) => {
+              useAppStore.getState().updateActiveTracking(track);
+            });
+          } else if (newTracking === undefined || newTracking === null) {
+            // Tracking was cleared
+            useAppStore.getState().clearActiveTracking();
+          }
+        }
+        if (changes.pendingMints) {
+          const newPending = changes.pendingMints.newValue;
+          if (Array.isArray(newPending)) {
+            newPending.forEach((mint: TrackedMedia) => {
+              const store = useAppStore.getState();
+              if (!store.pendingMints.some((p) => p.id === mint.id)) {
+                store.addPendingMint(mint);
+              }
+            });
+          }
         }
       }
     };
@@ -444,6 +618,7 @@ export function HomePage() {
     return () => {
       chrome.runtime.onMessage.removeListener(handleMessage);
       chrome.storage?.onChanged?.removeListener(handleStorageChange);
+      clearInterval(pollInterval);
     };
   }, []);
 
@@ -540,6 +715,28 @@ export function HomePage() {
     ...pendingMints,
     ...activeTracking.filter((t) => !pendingMints.some((p) => p.id === t.id)),
   ];
+
+  // Debug logging for tracking state
+  useEffect(() => {
+    console.log("[Trex HomePage] Tracking state update:", {
+      activeTrackingCount: activeTracking.length,
+      pendingMintsCount: pendingMints.length,
+      allTrackedMediaCount: allTrackedMedia.length,
+      isConnected,
+      trackingEnabled,
+      activeTracking: activeTracking.map((t) => ({
+        id: t.id,
+        title: t.title,
+        progress: t.progress,
+      })),
+    });
+  }, [
+    activeTracking,
+    pendingMints,
+    isConnected,
+    trackingEnabled,
+    allTrackedMedia.length,
+  ]);
 
   return (
     <div className="px-4 py-6 space-y-8">
@@ -735,6 +932,42 @@ export function HomePage() {
 
       {/* Series Bookmarks */}
       {isExtension && <SeriesBookmarksPanel />}
+
+      {/* Test Data Button - For testing extension functionality */}
+      {isConnected && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="relative"
+        >
+          <button
+            onClick={() => setShowTestList(!showTestList)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-dark-800 border border-dark-700 text-dark-300 hover:text-white hover:border-coral/50 transition-colors"
+          >
+            <Play className="w-4 h-4" />
+            Load Test Data for Minting
+          </button>
+          {showTestList && (
+            <div className="absolute top-full mt-2 left-0 right-0 bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-50">
+              {testDataList.map((data, index) => (
+                <button
+                  key={index}
+                  onClick={() => loadTestData(index)}
+                  className="w-full text-left px-4 py-3 hover:bg-dark-700 transition-colors border-b border-dark-700 last:border-0"
+                >
+                  <p className="text-white text-sm font-medium truncate">
+                    {data.title}
+                  </p>
+                  <p className="text-dark-400 text-xs capitalize">
+                    {data.type} • {data.platform}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Stats - Temporarily disabled */}
       {SHOW_STATS && (

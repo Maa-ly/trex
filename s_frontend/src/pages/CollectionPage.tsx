@@ -50,11 +50,19 @@ export function CollectionPage() {
         setCompletions(items);
       } catch (e: any) {
         console.error("Failed to load collection:", e);
+        // Show user-friendly error messages
+        let errorMessage = "Failed to load collection";
+        if (e?.message?.includes("parse") || e?.message?.includes("signed")) {
+          errorMessage =
+            "Unable to read wallet data. Please try reconnecting your wallet.";
+        } else if (e?.message?.includes("dictionary")) {
+          errorMessage = "No NFTs found in your collection yet.";
+        } else if (e?.message) {
+          errorMessage = e.message;
+        }
         addToast({
           type: "error",
-          message: e?.message
-            ? `Failed to load collection: ${e.message}`
-            : "Failed to load collection",
+          message: errorMessage,
         });
       } finally {
         setIsLoading(false);

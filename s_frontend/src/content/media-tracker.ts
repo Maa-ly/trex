@@ -3,6 +3,19 @@
  * Tracks media consumption across supported platforms
  */
 
+// Import UI components
+import {
+  getCompletionBannerHTML,
+  getTrackSeriesButtonStyles,
+  getTrackSeriesButtonHoverStyles,
+  getTrackSeriesButtonDefaultStyles,
+  getSuccessToastStyles,
+  ensureOutfitFont,
+} from "./ui-components";
+
+// Verify script loaded
+console.log("[Trex] Content script loaded on:", window.location.href);
+
 // Supported platforms for tracking
 const SUPPORTED_PLATFORMS = {
   // Video streaming - Premium
@@ -916,9 +929,7 @@ let currentSession: TrackingSession | null = null;
 let trackingInterval: ReturnType<typeof setInterval> | null = null;
 let scrollTrackingInterval: ReturnType<typeof setInterval> | null = null;
 let activityTrackingInterval: ReturnType<typeof setInterval> | null = null;
-let _lastScrollPosition = 0; // Prefixed with _ for ESLint
 let maxScrollProgress = 0;
-let _pageViewStartTime = Date.now(); // Prefixed with _ for ESLint
 let totalActiveTime = 0;
 let lastActivityTime = Date.now();
 let isUserActive = true;
@@ -1131,8 +1142,6 @@ function startScrollTracking() {
   if (scrollTrackingInterval) return;
 
   console.log("[Trex] Starting scroll/reading tracking");
-  _lastScrollPosition = window.scrollY; // Initialize
-  _pageViewStartTime = Date.now(); // Initialize
 
   const updateScrollProgress = () => {
     const scrollProgress = calculateScrollProgress();
@@ -1448,56 +1457,128 @@ function parse9AnimeResponse(
 }
 
 /**
- * Intercept XHR requests to capture API responses for metadata
+ * Intercept XHR and fetch requests to capture API responses for metadata
  */
 function setupApiInterceptor() {
-  const originalFetch = window.fetch;
+  // Store captured metadata for use when session starts
+  let capturedMetadata: Partial<MediaInfo> | null = null;
 
-  // Intercept fetch requests
-  window.fetch = async function (...args) {
-    const response = await originalFetch.apply(this, args);
-    const url =
-      typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
-
+  // Helper to process API responses
+  const processApiResponse = async (
+    url: string,
+    response: Response | string
+  ) => {
     try {
-      // Clone response to read it without consuming
-      const clonedResponse = response.clone();
+      let data: unknown;
+      if (typeof response === "string") {
+        data = JSON.parse(response);
+      } else {
+        const clonedResponse = response.clone();
+        data = await clonedResponse.json();
+      }
 
-      // Check for Filmboom API
-      if (url.includes("wefeed-h5-bff/web/subject/detail")) {
-        const data = await clonedResponse.json();
-        const metadata = parseFilmboomResponse(data);
+      // Check for Filmboom/Moviebox subject detail API
+      if (
+        url.includes("wefeed-h5-bff/web/subject/detail") ||
+        url.includes("subject/detail")
+      ) {
+        const metadata = parseFilmboomResponse(data as FilmboomApiResponse);
         if (metadata) {
           console.log("[Trex] Captured Filmboom metadata:", metadata);
+          capturedMetadata = { ...capturedMetadata, ...metadata };
           updateSessionWithMetadata(metadata);
+        }
+      }
+
+      // Check for Filmboom/Moviebox streams API (contains actual duration)
+      if (
+        url.includes("wefeed-h5-bff/web/resource/streams") ||
+        url.includes("resource/streams")
+      ) {
+        const streamsData = data as {
+          code: number;
+          data?: { streams?: Array<{ duration: number }> };
+        };
+        if (streamsData.code === 0 && streamsData.data?.streams?.length) {
+          const duration = streamsData.data.streams[0].duration;
+          if (duration && duration > 0) {
+            console.log("[Trex] Captured stream duration:", duration);
+            const metadata = { duration };
+            capturedMetadata = { ...capturedMetadata, ...metadata };
+            updateSessionWithMetadata(metadata);
+          }
         }
       }
 
       // Check for MangaDex API
       if (url.includes("api.mangadex.org/chapter")) {
-        const data = await clonedResponse.json();
-        const metadata = parseMangaDexResponse(data);
+        const metadata = parseMangaDexResponse(data as MangaDexChapterResponse);
         if (metadata) {
           console.log("[Trex] Captured MangaDex metadata:", metadata);
+          capturedMetadata = { ...capturedMetadata, ...metadata };
           updateSessionWithMetadata(metadata);
         }
       }
 
       // Check for 9anime API
       if (url.includes("/ajax/episode/") || url.includes("servers?episodeid")) {
-        const data = await clonedResponse.json();
-        const metadata = parse9AnimeResponse(data);
+        const metadata = parse9AnimeResponse(data as NineAnimeServerResponse);
         if (metadata) {
           console.log("[Trex] Captured 9anime metadata:", metadata);
+          capturedMetadata = { ...capturedMetadata, ...metadata };
           updateSessionWithMetadata(metadata);
         }
       }
     } catch {
       // Silently fail - don't break the original request
     }
+  };
 
+  // Intercept fetch requests
+  const originalFetch = window.fetch;
+  window.fetch = async function (...args) {
+    const response = await originalFetch.apply(this, args);
+    const url =
+      typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
+    processApiResponse(url, response);
     return response;
   };
+
+  // Intercept XMLHttpRequest for older APIs
+  const originalXHROpen = XMLHttpRequest.prototype.open;
+  const originalXHRSend = XMLHttpRequest.prototype.send;
+
+  XMLHttpRequest.prototype.open = function (
+    method: string,
+    url: string | URL,
+    ...rest: unknown[]
+  ) {
+    (this as XMLHttpRequest & { _trexUrl?: string })._trexUrl = url.toString();
+    return originalXHROpen.apply(this, [method, url, ...rest] as Parameters<
+      typeof originalXHROpen
+    >);
+  };
+
+  XMLHttpRequest.prototype.send = function (...args) {
+    this.addEventListener("load", function () {
+      const url = (this as XMLHttpRequest & { _trexUrl?: string })._trexUrl;
+      if (url && this.responseText) {
+        // For XHR, we pass the response text directly
+        try {
+          const data = JSON.parse(this.responseText);
+          processApiResponse(url, new Response(JSON.stringify(data)));
+        } catch {
+          // Not JSON, ignore
+        }
+      }
+    });
+    return originalXHRSend.apply(this, args);
+  };
+
+  // Expose captured metadata for session initialization
+  (
+    window as Window & { __trexCapturedMetadata?: Partial<MediaInfo> | null }
+  ).__trexCapturedMetadata = capturedMetadata;
 }
 
 /**
@@ -1646,49 +1727,100 @@ function extractMediaInfo(): MediaInfo | null {
       if (chapterInfo) {
         chapter = `Chapter ${chapterInfo.chapter}`;
         episode = chapterInfo.episode;
-        if (chapterInfo.title !== "Unknown") {
-          title = chapterInfo.title;
-        }
       }
 
-      // Platform-specific title extraction for manga sites
-      const mangaTitleSelectors = [
-        // Webtoons specific
-        ".subj_episode", // Episode title
-        ".subj", // Series title
-        "h1.subj_episode",
-        ".episode__title",
-        ".detail_lst .subj",
-        // General manga selectors
-        ".manga-title",
+      // Get series/manga title first (the main title, not the chapter title)
+      let seriesTitle = "";
+      const seriesTitleSelectors = [
+        // Webtoons specific - series title
+        ".subj", // Series title on Webtoons
+        ".info a.subj", // Series name link
+        "a.subj_info", // Another Webtoons series selector
+        '[class*="series"] a', // Series links
+        ".og-title", // Open graph title element
+        // MangaDex
+        ".manga-title a",
+        ".manga-info-title",
+        // General series selectors
         ".series-title",
-        ".chapter-title",
-        ".reader-header-title",
-        "[data-title]",
-        "h1",
-        "h2.title",
-        ".title",
-        // Fallback to meta
-        'meta[property="og:title"]',
+        ".manga-title",
+        ".comic-title",
+        'meta[property="og:site_name"]',
       ];
 
-      for (const selector of mangaTitleSelectors) {
+      for (const selector of seriesTitleSelectors) {
         if (selector.startsWith("meta")) {
           const meta = document.querySelector(selector);
           if (meta) {
             const content = meta.getAttribute("content");
-            if (content && content.trim() && content !== title) {
-              title = content.trim();
+            if (
+              content &&
+              content.trim() &&
+              !content.toLowerCase().includes("webtoon")
+            ) {
+              seriesTitle = content.trim();
               break;
             }
           }
         } else {
           const el = document.querySelector(selector);
           if (el?.textContent?.trim() && el.textContent.trim().length > 2) {
-            title = el.textContent.trim();
+            seriesTitle = el.textContent.trim();
             break;
           }
         }
+      }
+
+      // Try to get episode/chapter title
+      let episodeTitle = "";
+      const episodeTitleSelectors = [
+        // Webtoons specific - episode title
+        ".subj_episode", // Episode title on Webtoons
+        ".episode__title",
+        "h1.subj_episode",
+        ".detail_lst .subj",
+        // General episode selectors
+        ".chapter-title",
+        ".episode-title",
+        ".reader-header-title",
+        "h1",
+      ];
+
+      for (const selector of episodeTitleSelectors) {
+        const el = document.querySelector(selector);
+        if (el?.textContent?.trim() && el.textContent.trim().length > 2) {
+          episodeTitle = el.textContent.trim();
+          break;
+        }
+      }
+
+      // Fallback to og:title meta tag
+      if (!seriesTitle && !episodeTitle) {
+        const ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) {
+          const content = ogTitle.getAttribute("content");
+          if (content) {
+            // Try to parse "Series Name - Episode X" format
+            const parts = content.split(/\s*[-|]\s*/);
+            if (parts.length >= 2) {
+              seriesTitle = parts[0].trim();
+              episodeTitle = parts.slice(1).join(" - ").trim();
+            } else {
+              episodeTitle = content.trim();
+            }
+          }
+        }
+      }
+
+      // Build the final title: "Series Name - Episode X" or just episode title
+      if (seriesTitle && episodeTitle && !episodeTitle.includes(seriesTitle)) {
+        title = `${seriesTitle} - ${episodeTitle}`;
+      } else if (seriesTitle && chapter) {
+        title = `${seriesTitle} - ${chapter}`;
+      } else if (episodeTitle) {
+        title = episodeTitle;
+      } else if (seriesTitle) {
+        title = seriesTitle;
       }
 
       // Calculate scroll progress for reading content
@@ -1702,7 +1834,7 @@ function extractMediaInfo(): MediaInfo | null {
       }
 
       // Clean up title - remove common suffixes
-      if (title !== "Unknown Title") {
+      if (title && title !== "Unknown Title") {
         title = title
           .replace(/\s*[-|]\s*WEBTOON$/i, "")
           .replace(/\s*[-|]\s*Webtoons?$/i, "")
@@ -1712,6 +1844,8 @@ function extractMediaInfo(): MediaInfo | null {
       }
 
       console.log("[Trex] Manga info extracted:", {
+        seriesTitle,
+        episodeTitle,
         title,
         chapter,
         episode,
@@ -2081,30 +2215,72 @@ function updateTracking() {
     sessionData.id ||
     `${currentSession.mediaInfo.platform}-${currentSession.startTime}`;
 
+  // Build tracking data object
+  const trackingData = {
+    id: sessionId,
+    platform: currentSession.mediaInfo.platform,
+    type: currentSession.mediaInfo.type,
+    title: currentSession.mediaInfo.title,
+    url: currentSession.mediaInfo.url,
+    progress: currentSession.mediaInfo.progress,
+    duration: currentSession.mediaInfo.duration,
+    thumbnail: mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
+    startTime: currentSession.startTime,
+    lastUpdate: now,
+    watchTime: Math.round(currentSession.watchTime),
+    completed: currentSession.completed,
+    chapter: currentSession.mediaInfo.chapter,
+    episode: currentSession.mediaInfo.episode,
+    currentPage: currentSession.mediaInfo.currentPage,
+    totalPages: currentSession.mediaInfo.totalPages,
+    scrollProgress: currentSession.mediaInfo.scrollProgress,
+  };
+
   // Send progress update to background
   chrome.runtime.sendMessage({
     type: "TRACKING_UPDATE",
-    data: {
-      id: sessionId,
-      platform: currentSession.mediaInfo.platform,
-      type: currentSession.mediaInfo.type,
-      title: currentSession.mediaInfo.title,
-      url: currentSession.mediaInfo.url,
-      progress: currentSession.mediaInfo.progress,
-      duration: currentSession.mediaInfo.duration,
-      thumbnail:
-        mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
-      startTime: currentSession.startTime,
-      lastUpdate: now,
-      watchTime: Math.round(currentSession.watchTime),
-      completed: currentSession.completed,
-      chapter: currentSession.mediaInfo.chapter,
-      episode: currentSession.mediaInfo.episode,
-      currentPage: currentSession.mediaInfo.currentPage,
-      totalPages: currentSession.mediaInfo.totalPages,
-      scrollProgress: currentSession.mediaInfo.scrollProgress,
-    },
+    data: trackingData,
   });
+
+  // Also directly write to chrome.storage.local as backup
+  // This ensures data persists even if service worker restarts
+  try {
+    chrome.storage.local.get(["activeTracking"], (result) => {
+      const existingTracking: Array<typeof trackingData> =
+        result.activeTracking || [];
+
+      // Find existing entry by URL or ID
+      const existingIndex = existingTracking.findIndex(
+        (t) => t.url === trackingData.url || t.id === trackingData.id
+      );
+
+      let updatedTracking: Array<typeof trackingData>;
+      if (existingIndex >= 0) {
+        // Update existing entry
+        updatedTracking = [...existingTracking];
+        updatedTracking[existingIndex] = trackingData;
+      } else {
+        // Add new entry
+        updatedTracking = [...existingTracking, trackingData];
+      }
+
+      // Keep only the last 10 tracking entries to avoid bloat
+      if (updatedTracking.length > 10) {
+        updatedTracking = updatedTracking.slice(-10);
+      }
+
+      chrome.storage.local.set({ activeTracking: updatedTracking }, () => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "[Trex] Error saving tracking to storage:",
+            chrome.runtime.lastError
+          );
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[Trex] Failed to write tracking to storage:", err);
+  }
 }
 
 /**
@@ -2120,11 +2296,27 @@ function stopTracking() {
     // Final update
     updateTracking();
 
+    const sessionUrl = currentSession.mediaInfo.url;
+
     // Send tracking end message
     chrome.runtime.sendMessage({
       type: "TRACKING_END",
       data: currentSession,
     });
+
+    // Also remove from chrome.storage.local
+    try {
+      chrome.storage.local.get(["activeTracking"], (result) => {
+        const existingTracking: Array<{ url: string }> =
+          result.activeTracking || [];
+        const updatedTracking = existingTracking.filter(
+          (t) => t.url !== sessionUrl
+        );
+        chrome.storage.local.set({ activeTracking: updatedTracking });
+      });
+    } catch (err) {
+      console.error("[Trex] Failed to remove tracking from storage:", err);
+    }
 
     currentSession = null;
   }
@@ -2156,60 +2348,21 @@ function showTrackSeriesButton() {
   if (!info || info.type !== "manga") return;
 
   // Ensure Outfit font is available
-  if (
-    !document.querySelector(
-      'link[href*="fonts.googleapis.com/css2?family=Outfit"'
-    )
-  ) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap";
-    document.head.appendChild(link);
-  }
+  ensureOutfitFont();
 
-  // Get fruit icon URL
-  const fruitIconUrl = chrome.runtime.getURL("icons/Fruit_color.png");
+  // Get clock icon URL
+  const clockIconUrl = chrome.runtime.getURL("icons/clock.png");
 
   const btn = document.createElement("button");
   btn.id = "trex-track-series";
-  btn.style.display = "inline-flex";
-  btn.style.alignItems = "center";
-  btn.style.gap = "8px";
 
-  // Fruit Icon Image
-  const icon = document.createElement("img");
-  icon.src = fruitIconUrl;
-  icon.alt = "Track";
-  icon.style.width = "20px";
-  icon.style.height = "20px";
+  btn.innerHTML = `
+    <img src="${clockIconUrl}" alt="Track" style="width: 24px; height: 24px;" />
+    <span style="font-weight: 500;">Track Series</span>
+  `;
 
-  const label = document.createElement("span");
-  label.textContent = "Track Series";
-  label.style.fontWeight = "600";
-
-  btn.appendChild(icon);
-  btn.appendChild(label);
-
-  // Styling with coral-violet gradient
-  btn.style.position = "fixed";
-  btn.style.bottom = "24px";
-  btn.style.right = "24px";
-  btn.style.zIndex = "999999";
-  btn.style.padding = "12px 20px";
-  btn.style.borderRadius = "12px";
-  btn.style.border = "none";
-  btn.style.color = "#fff";
-  btn.style.background =
-    "linear-gradient(139.84deg, #FF6D75 50%, #9C86FF 96.42%)";
-  btn.style.cursor = "pointer";
-  btn.style.boxShadow = "0 8px 24px rgba(255, 109, 117, 0.35)";
-  btn.style.fontFamily =
-    "Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  btn.style.fontSize = "14px";
-  btn.style.transform = "translateX(140%)";
-  btn.style.transition =
-    "transform 300ms ease-out, box-shadow 200ms ease, transform 200ms ease";
+  // Apply styles matching extension buttons (from-primary-500 to-secondary gradient)
+  Object.assign(btn.style, getTrackSeriesButtonStyles());
 
   btn.onclick = () => {
     const chapterInfo = extractChapterInfo();
@@ -2224,34 +2377,32 @@ function showTrackSeriesButton() {
     const onAdded = () => {
       // Show success toast
       const toast = document.createElement("div");
-      toast.textContent = "✓ Series added";
-      toast.style.position = "fixed";
-      toast.style.bottom = "80px";
-      toast.style.right = "24px";
-      toast.style.padding = "12px 16px";
-      toast.style.borderRadius = "10px";
-      toast.style.background =
-        "linear-gradient(135deg, #4BE15A 0%, #3DBF4D 100%)";
-      toast.style.color = "#fff";
-      toast.style.fontFamily =
-        "Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      toast.style.fontWeight = "500";
-      toast.style.fontSize = "14px";
-      toast.style.boxShadow = "0 4px 16px rgba(75, 225, 90, 0.3)";
-      toast.style.zIndex = "999999";
-      toast.style.animation = "slideIn 0.3s ease-out";
+      toast.textContent = "✓ Series added to tracking";
+      Object.assign(toast.style, getSuccessToastStyles());
       document.body.appendChild(toast);
+
+      // Animate in
+      requestAnimationFrame(() => {
+        toast.style.transform = "translateX(0)";
+        toast.style.opacity = "1";
+      });
+
       setTimeout(() => {
+        toast.style.transform = "translateX(100%)";
         toast.style.opacity = "0";
-        toast.style.transition = "opacity 0.3s ease";
         setTimeout(() => toast.remove(), 300);
       }, 2000);
     };
 
     try {
-      browserAPI.runtime.sendMessage(
+      chrome.runtime.sendMessage(
         { type: "ADD_SERIES_BOOKMARK", data: entry },
-        () => onAdded()
+        () => {
+          if (chrome.runtime.lastError) {
+            console.log("[Trex] Message error:", chrome.runtime.lastError);
+          }
+          onAdded();
+        }
       );
     } catch {
       // Fallback direct storage
@@ -2274,14 +2425,12 @@ function showTrackSeriesButton() {
     btn.style.transform = "translateX(0)";
   });
 
-  // Hover effects
+  // Hover effects matching extension style
   btn.onmouseenter = () => {
-    btn.style.boxShadow = "0 12px 28px rgba(255, 109, 117, 0.45)";
-    btn.style.transform = "translateY(-2px)";
+    Object.assign(btn.style, getTrackSeriesButtonHoverStyles());
   };
   btn.onmouseleave = () => {
-    btn.style.boxShadow = "0 8px 24px rgba(255, 109, 117, 0.35)";
-    btn.style.transform = "translateY(0)";
+    Object.assign(btn.style, getTrackSeriesButtonDefaultStyles());
   };
 }
 
@@ -2299,195 +2448,15 @@ function showCompletionBanner(mediaInfo: MediaInfo, watchTime?: number) {
 
   const banner = document.createElement("div");
   banner.id = "trex-completion-banner";
-  banner.innerHTML = `
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
-      
-      #trex-completion-banner {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 999999;
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid rgba(255, 109, 117, 0.3);
-        border-radius: 16px;
-        padding: 20px 24px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 109, 117, 0.15);
-        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        min-width: 340px;
-        max-width: 400px;
-        animation: slideIn 0.3s ease-out;
-      }
-      
-      @keyframes slideIn {
-        from {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
-      }
-      
-      .trex-banner-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 12px;
-      }
-      
-      .trex-banner-icon {
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .trex-banner-icon img {
-        width: 48px;
-        height: 48px;
-      }
-      
-      .trex-banner-title {
-        color: #FF6D75;
-        font-weight: 600;
-        font-size: 16px;
-        margin: 0;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .trex-banner-subtitle {
-        color: #a0aec0;
-        font-size: 12px;
-        margin: 0;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .trex-banner-media {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 16px;
-      }
-      
-      .trex-banner-media-title {
-        color: white;
-        font-weight: 500;
-        font-size: 14px;
-        margin: 0 0 4px 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .trex-banner-media-type {
-        color: #a0aec0;
-        font-size: 12px;
-        text-transform: capitalize;
-        margin: 0;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .trex-banner-buttons {
-        display: flex;
-        gap: 10px;
-      }
-      
-      .trex-banner-btn {
-        flex: 1;
-        padding: 12px 16px;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        border: none;
-        transition: all 0.2s;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .trex-banner-btn-primary {
-        background: linear-gradient(135deg, #FF6D75 0%, #9C86FF 100%);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
-      
-      .trex-banner-btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 109, 117, 0.4);
-      }
-      
-      .trex-banner-btn-primary img {
-        width: 18px;
-        height: 18px;
-      }
-      
-      .trex-banner-btn-secondary {
-        background: rgba(255, 255, 255, 0.1);
-        color: #a0aec0;
-      }
-      
-      .trex-banner-btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.15);
-      }
-      
-      .trex-banner-close {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 24px;
-        height: 24px;
-        border: none;
-        background: transparent;
-        color: #718096;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-      }
-      
-      .trex-banner-close:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    </style>
-    
-    <button class="trex-banner-close" onclick="this.parentElement.remove()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 6L6 18M6 6l12 12"/>
-      </svg>
-    </button>
-    
-    <div class="trex-banner-header">
-      <div class="trex-banner-icon">
-        <img src="${giftboxIconUrl}" alt="Achievement" />
-      </div>
-      <div>
-        <p class="trex-banner-title">Completion Detected!</p>
-        <p class="trex-banner-subtitle">Trex Achievement</p>
-      </div>
-    </div>
-    
-    <div class="trex-banner-media">
-      <p class="trex-banner-media-title">${mediaInfo.title}</p>
-      <p class="trex-banner-media-type">${mediaInfo.type} • ${mediaInfo.platform}</p>
-    </div>
-    
-    <div class="trex-banner-buttons">
-      <button class="trex-banner-btn trex-banner-btn-secondary" onclick="this.closest('#trex-completion-banner').remove()">
-        Later
-      </button>
-      <button class="trex-banner-btn trex-banner-btn-primary" id="trex-mint-btn">
-        <img src="${veryCoinIconUrl}" alt="" />
-        Mint NFT
-      </button>
-    </div>
-  `;
+
+  // Use extracted HTML from ui-components
+  banner.innerHTML = getCompletionBannerHTML({
+    title: mediaInfo.title,
+    type: mediaInfo.type,
+    platform: mediaInfo.platform,
+    giftboxIconUrl,
+    veryCoinIconUrl,
+  });
 
   document.body.appendChild(banner);
 
@@ -2867,6 +2836,66 @@ function setupVideoListeners() {
   }
 }
 
+// ==========================================
+// Message Handler for Background Script
+// ==========================================
+function setupMessageHandler() {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    console.log("[Trex] Message received:", message.type);
+
+    switch (message.type) {
+      case "PING":
+        // Used by background script to check if content script is active
+        sendResponse({ active: true, url: window.location.href });
+        return true;
+
+      case "REINITIALIZE":
+        // Re-run initialization (e.g., after permission granted)
+        console.log("[Trex] Re-initializing tracking...");
+        if (!currentSession) {
+          startTracking();
+          const platform = detectPlatform();
+          if (
+            platform?.config.type === "manga" ||
+            platform?.config.type === "book"
+          ) {
+            startScrollTracking();
+          }
+          startActivityTracking();
+        }
+        sendResponse({ success: true });
+        return true;
+
+      case "REQUEST_TRACKING":
+        // Manual tracking request from context menu
+        console.log("[Trex] Manual tracking requested");
+        startTracking();
+        sendResponse({ success: true });
+        return true;
+
+      case "GET_TRACKING_STATUS":
+        // Get current tracking status
+        sendResponse({
+          isTracking: !!currentSession,
+          session: currentSession
+            ? {
+                title: currentSession.mediaInfo.title,
+                platform: currentSession.mediaInfo.platform,
+                progress: currentSession.mediaInfo.progress,
+                watchTime: currentSession.watchTime,
+              }
+            : null,
+        });
+        return true;
+
+      default:
+        return false;
+    }
+  });
+}
+
 // Start initialization
+setupMessageHandler();
 setupVideoListeners();
+setupApiInterceptor();
 init();
