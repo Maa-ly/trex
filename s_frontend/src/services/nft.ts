@@ -212,13 +212,15 @@ export async function readUserNfts(userAddress: string): Promise<string[]> {
     return [];
   }
 
-  // TODO: Implement one of these approaches:
+  // For now, we rely on local storage via the completions store
+  // NFTs are added to the store when minted via MintNFTModal
+  // To query blockchain directly, you would need to:
   // 1. Enable CSPR.cloud proxy in CSPR.click app settings at https://cspr.build
   // 2. Create backend endpoint: GET /api/nfts/:userAddress
   // 3. Index blockchain events to a database
 
-  console.warn(
-    "[Trex] NFT reading requires CSPR.cloud RPC proxy to be enabled or backend implementation"
+  console.log(
+    "[Trex] Using local storage for NFTs. Blockchain querying requires RPC proxy or backend."
   );
   return [];
 }

@@ -24,7 +24,7 @@ const CONTRACT_HASH = process.env.CONTRACT_HASH;
 const CHAIN_NAME = process.env.CHAIN_NAME || "casper-test";
 const NODE_URL =
   process.env.NODE_URL || "https://node.testnet.casper.network/rpc";
-const PAYMENT_AMOUNT = process.env.PAYMENT_AMOUNT || "5000000000";
+const PAYMENT_AMOUNT = process.env.PAYMENT_AMOUNT || "10000000000";
 
 if (!CONTRACT_HASH) {
   console.error("ERROR: CONTRACT_HASH is required");

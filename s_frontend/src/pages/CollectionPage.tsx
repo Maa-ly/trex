@@ -16,7 +16,6 @@ import { NFTCard, NFTCardSkeleton } from "@/components/NFTCard";
 import { StatsSkeleton } from "@/components/Skeleton";
 import { CollectionsNavIcon } from "@/components/AppIcons";
 import type { MediaType } from "@/types";
-import { readUserNfts, getTokensMetadata } from "@/services/nft";
 
 const typeFilters = [
   { type: null, label: "All", icon: Library },
@@ -28,7 +27,7 @@ const typeFilters = [
 ];
 
 export function CollectionPage() {
-  const { isConnected, completions, setCompletions, currentAccount, addToast } =
+  const { isConnected, completions, currentAccount, addToast } =
     useAppStore();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedType, setSelectedType] = useState<MediaType | null>(null);
@@ -42,12 +41,19 @@ export function CollectionPage() {
           setIsLoading(false);
           return;
         }
-        const ids = await readUserNfts(currentAccount.address as `0x${string}`);
-        const items = await getTokensMetadata(ids);
 
-        // getTokensMetadata already returns CompletionNFT[], so just use it directly
-        // The function will be updated to fetch from Casper contract
-        setCompletions(items);
+        // For now, we use local storage completions (added via MintNFTModal)
+        // Blockchain querying would require RPC proxy setup or backend endpoint
+        // The completions are already in the store, so just mark loading as done
+        console.log(
+          "[Trex CollectionPage] Using local completions:",
+          completions.length
+        );
+
+        // Optional: In the future, fetch from blockchain here
+        // const ids = await readUserNfts(currentAccount.address as `0x${string}`);
+        // const items = await getTokensMetadata(ids);
+        // setCompletions(items);
       } catch (e: any) {
         console.error("Failed to load collection:", e);
         // Show user-friendly error messages

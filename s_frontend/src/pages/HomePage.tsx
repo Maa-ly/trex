@@ -1163,10 +1163,6 @@ export function HomePage() {
             removePendingMint(selectedMedia.id);
             setShowMintModal(false);
             setSelectedMedia(null);
-            addToast({
-              type: "success",
-              message: "NFT minted successfully! 🎉",
-            });
           }}
         />
       )}
