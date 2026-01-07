@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Calendar, Loader2, Sparkles, Trophy } from "lucide-react";
 import type { MediaItem } from "@/types";
@@ -108,7 +109,7 @@ export function MintNFTModal({
     }
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -118,11 +119,11 @@ export function MintNFTModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-md z-[9998]"
           />
 
           {/* Modal Container */}
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -299,4 +300,9 @@ export function MintNFTModal({
       )}
     </AnimatePresence>
   );
+
+  // Render modal using portal to ensure it's above everything
+  return typeof document !== "undefined"
+    ? createPortal(modalContent, document.body)
+    : null;
 }

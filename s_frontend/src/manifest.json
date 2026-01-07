@@ -133,7 +133,7 @@
   ],
   "options_page": "src/options/index.html",
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https: wss: data:; frame-src https: data:; img-src 'self' https: data:;"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' http://localhost:* https: wss: ws: data:; frame-src https: data:; img-src 'self' https: data:;"
   },
   "externally_connectable": {
     "matches": [

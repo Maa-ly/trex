@@ -250,7 +250,9 @@ export function Header() {
                             Casper Wallet
                           </p>
                           <p className="text-sm text-white font-medium truncate">
-                            {currentAccount?.address || "Not connected"}
+                            {currentAccount?.address
+                              ? truncateAddress(currentAccount.address)
+                              : "Not connected"}
                           </p>
                         </div>
                       </div>
