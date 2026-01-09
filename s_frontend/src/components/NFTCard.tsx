@@ -127,8 +127,8 @@ export function NFTCard({ nft, onClick }: NFTCardProps) {
                 e.stopPropagation();
                 // Open transaction in explorer
                 const url = nft.transactionHash
-                  ? `https://veryscan.io/tx/${nft.transactionHash}`
-                  : `https://veryscan.io/address/${TREX_PROXY_ADDRESS}`;
+                  ? `https://testnet.cspr.live/transaction/${nft.transactionHash}`
+                  : `https://testnet.cspr.live/address/${TREX_PROXY_ADDRESS}`;
                 window.open(url, "_blank");
               }}
             >

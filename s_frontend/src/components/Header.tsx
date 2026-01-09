@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { ChevronDown, LogOut, Copy, Check } from "lucide-react";
 import { useClickRef } from "@make-software/csprclick-ui";
@@ -160,7 +161,8 @@ export function Header() {
   };
 
   const truncateAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    if (address.length <= 19) return address;
+    return `${address.slice(0, 15)}...${address.slice(-4)}`;
   };
 
   return (
@@ -230,16 +232,21 @@ export function Header() {
               {/* Dropdown */}
               {showDropdown && (
                 <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowDropdown(false)}
-                  />
+                  {/* Full-screen overlay to catch clicks outside */}
+                  {createPortal(
+                    <div
+                      className="fixed inset-0 z-[10]"
+                      onClick={() => setShowDropdown(false)}
+                    />,
+                    document.body
+                  )}
                   <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    onClick={(e) => e.stopPropagation()}
                     className="absolute right-0 top-full mt-2 w-64 glass-dark rounded-xl border border-dark-700 
-                         shadow-xl shadow-black/20 z-50 overflow-hidden"
+                         shadow-xl shadow-black/20 z-[9999] overflow-hidden"
                   >
                     {/* Account Info */}
                     <div className="p-4 border-b border-dark-700">

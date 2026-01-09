@@ -23,6 +23,7 @@ interface AppState {
   nfts: NFT[];
   setNFTs: (nfts: NFT[]) => void;
   addNFT: (nft: NFT) => void;
+  fetchUserNFTs: (publicKey: string) => Promise<string[]>;
 
   // Contract
   contractHash: string | null;
@@ -84,6 +85,21 @@ export const useStore = create<AppState>()(
         set((state: AppState) => ({
           nfts: [...state.nfts, nft],
         })),
+      fetchUserNFTs: async (publicKey: string) => {
+        try {
+          const BACKEND_API_URL = "http://localhost:3001";
+          const response = await fetch(
+            `${BACKEND_API_URL}/api/user-nfts/${publicKey}`
+          );
+          if (!response.ok) throw new Error("Failed to fetch NFTs");
+          const data = await response.json();
+          console.log(`[useStore] Loaded ${data.count} NFTs:`, data.tokenIds);
+          return data.tokenIds || [];
+        } catch (error) {
+          console.error("[useStore] Failed to fetch NFTs:", error);
+          return [];
+        }
+      },
 
       // Contract
       contractHash: null,

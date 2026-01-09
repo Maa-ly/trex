@@ -748,7 +748,9 @@ export function SettingsPage() {
                         value={newSiteName}
                         onChange={(e) => setNewSiteName(e.target.value)}
                         placeholder="e.g., HBO Max"
-                        className="input-field"
+                        className="w-full px-4 py-3 bg-transparent border border-dark-700 rounded-xl text-white
+                                 placeholder:text-dark-400 focus:outline-none focus:border-coral
+                                 transition-all duration-200"
                       />
                     </div>
 
@@ -761,7 +763,9 @@ export function SettingsPage() {
                         value={newSiteUrl}
                         onChange={(e) => setNewSiteUrl(e.target.value)}
                         placeholder="e.g., hbomax.com"
-                        className="input-field"
+                        className="w-full px-4 py-3 bg-transparent border border-dark-700 rounded-xl text-white
+                                 placeholder:text-dark-400 focus:outline-none focus:border-coral
+                                 transition-all duration-200"
                       />
                     </div>
 

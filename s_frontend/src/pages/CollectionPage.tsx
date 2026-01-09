@@ -15,6 +15,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { NFTCard, NFTCardSkeleton } from "@/components/NFTCard";
 import { StatsSkeleton } from "@/components/Skeleton";
 import { CollectionsNavIcon } from "@/components/AppIcons";
+import { getUserNFTs } from "@/services/api";
 import type { MediaType } from "@/types";
 
 const typeFilters = [
@@ -27,8 +28,7 @@ const typeFilters = [
 ];
 
 export function CollectionPage() {
-  const { isConnected, completions, currentAccount, addToast } =
-    useAppStore();
+  const { isConnected, completions, currentAccount, addToast } = useAppStore();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedType, setSelectedType] = useState<MediaType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,21 +42,32 @@ export function CollectionPage() {
           return;
         }
 
-        // For now, we use local storage completions (added via MintNFTModal)
-        // Blockchain querying would require RPC proxy setup or backend endpoint
-        // The completions are already in the store, so just mark loading as done
+        // Use local completions as primary source
         console.log(
           "[Trex CollectionPage] Using local completions:",
           completions.length
         );
 
-        // Optional: In the future, fetch from blockchain here
-        // const ids = await readUserNfts(currentAccount.address as `0x${string}`);
-        // const items = await getTokensMetadata(ids);
-        // setCompletions(items);
+        // Also query blockchain for any NFTs not in local storage
+        try {
+          const result = await getUserNFTs(currentAccount.address);
+          if (result.tokenIds && result.tokenIds.length > 0) {
+            console.log(
+              `[Trex CollectionPage] Found ${result.tokenIds.length} NFTs on blockchain:`,
+              result.tokenIds
+            );
+            // TODO: Fetch metadata for these token IDs and merge with local completions
+            // For now, just log the IDs
+          }
+        } catch (blockchainError) {
+          // Non-critical: blockchain query failed, but we have local data
+          console.warn(
+            "[Trex CollectionPage] Blockchain query failed:",
+            blockchainError
+          );
+        }
       } catch (e: any) {
         console.error("Failed to load collection:", e);
-        // Show user-friendly error messages
         let errorMessage = "Failed to load collection";
         if (e?.message?.includes("parse") || e?.message?.includes("signed")) {
           errorMessage =

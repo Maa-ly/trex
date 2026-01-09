@@ -27,48 +27,8 @@ import {
 } from "@/services/nft";
 import { GroupDetailHeaderSkeleton, PostSkeleton } from "@/components/Skeleton";
 
-// Mock discussion posts
-const mockPosts = [
-  {
-    id: "1",
-    user: {
-      name: "MovieBuff42",
-      avatar:
-        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
-    },
-    content:
-      "Just rewatched this for the 5th time. The ending still gives me chills every time!",
-    likes: 24,
-    replies: 8,
-    createdAt: new Date("2024-03-20T14:30:00"),
-  },
-  {
-    id: "2",
-    user: {
-      name: "CinemaLover",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-    },
-    content:
-      "The character development in this is unmatched. Every detail matters.",
-    likes: 18,
-    replies: 5,
-    createdAt: new Date("2024-03-19T10:15:00"),
-  },
-  {
-    id: "3",
-    user: {
-      name: "StorytellerPro",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-    },
-    content:
-      "Who else thinks this deserves more recognition? Let's discuss the themes!",
-    likes: 31,
-    replies: 12,
-    createdAt: new Date("2024-03-18T16:45:00"),
-  },
-];
+// TODO: Fetch discussion posts from backend API
+const mockPosts: any[] = [];
 
 // Helper to extract YouTube video ID
 function getYoutubeId(url: string) {

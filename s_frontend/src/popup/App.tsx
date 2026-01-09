@@ -104,7 +104,8 @@ const HeaderWallet: React.FC = () => {
   };
 
   const truncateAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+    if (addr.length <= 15) return addr;
+    return `${addr.slice(0, 14)}...${addr.slice(-4)}`;
   };
 
   if (!isConnected || !user) {
@@ -167,7 +168,7 @@ const HeaderWallet: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] text-white/50">Casper Wallet</p>
                   <p className="text-xs text-white font-medium truncate">
-                    {user.address}
+                    {truncateAddress(user.address)}
                   </p>
                 </div>
               </div>

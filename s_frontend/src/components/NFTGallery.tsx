@@ -12,6 +12,7 @@ import {
   List,
   ExternalLink,
   RefreshCw,
+  Eye,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 
@@ -31,6 +32,7 @@ interface NFTItem {
   coverImage?: string;
   mintedAt: Date;
   transactionHash?: string;
+  externalUrl?: string;
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -87,15 +89,45 @@ function NFTCard({ nft }: { nft: NFTItem }) {
       </div>
 
       {/* Content */}
-      <div className="p-2.5">
-        <h3 className="text-xs font-medium text-white truncate mb-1">
-          {nft.title}
-        </h3>
+      <div className="p-2.5 space-y-2">
+        <h3 className="text-xs font-medium text-white truncate">{nft.title}</h3>
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-white/50 capitalize">
             {nft.platform}
           </span>
           <span className="text-[10px] text-white/40">#{nft.tokenId}</span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-1">
+          {nft.externalUrl && (
+            <a
+              href={nft.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 rounded-lg text-[10px] text-primary-300 transition-colors"
+            >
+              <Eye className="w-3 h-3" />
+              <span>
+                {nft.type === "book" ||
+                nft.type === "manga" ||
+                nft.type === "comic"
+                  ? "Read"
+                  : "Watch"}
+              </span>
+            </a>
+          )}
+          {nft.transactionHash && (
+            <a
+              href={`https://cspr.live/deploy/${nft.transactionHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+              title="View on Blockchain"
+            >
+              <ExternalLink className="w-3 h-3 text-white/60" />
+            </a>
+          )}
         </div>
       </div>
     </motion.div>
@@ -167,19 +199,38 @@ export function NFTGallery() {
     const loadNFTs = async () => {
       setIsLoading(true);
       try {
-        // Try to load from storage first
+        // Fetch from backend API
+        const BACKEND_API_URL = "http://localhost:3001";
+        const response = await fetch(
+          `${BACKEND_API_URL}/api/user-nfts/${user.address}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log(
+            `[NFTGallery] Loaded ${data.count} NFTs from backend:`,
+            data.tokenIds
+          );
+
+          // Convert token IDs to NFTItem format
+          const nftItems: NFTItem[] = data.tokenIds.map((tokenId: string) => ({
+            id: `nft-${tokenId}`,
+            tokenId,
+            title: `Achievement #${tokenId}`,
+            type: "video",
+            platform: "casper",
+            mintedAt: new Date(),
+          }));
+
+          setNfts(nftItems);
+        }
+
+        // Also try to load from storage first if extension
         if (isExtension) {
           const result = await chrome.storage.local.get(["userNFTs"]);
           if (result.userNFTs) {
             setNfts(result.userNFTs);
           }
-        }
-
-        // TODO: Fetch from Casper chain using user.address
-        // For now, use mock data if no stored NFTs
-        if (nfts.length === 0) {
-          // Mock data for demonstration
-          setNfts([]);
         }
       } catch (error) {
         console.error("[Trex] Failed to load NFTs:", error);

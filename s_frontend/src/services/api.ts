@@ -178,7 +178,81 @@ export async function getMatchingUsers(
   return apiRequest(`/social/matches/${userAddress}`);
 }
 
-// ==================
+/**
+ * Find users who have completed a specific media item
+ */
+export async function findUsersWithMedia(
+  mediaType: string,
+  mediaUrl: string,
+  mediaTitle: string
+): Promise<{ users: string[]; count: number }> {
+  const BACKEND_API_URL =
+    import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3001";
+
+  // Map frontend media type strings to contract MediaKind enum numbers
+  const mediaKindMap: Record<string, number> = {
+    book: 0,
+    movie: 1,
+    anime: 2,
+    manga: 3,
+    comic: 4,
+    tvshow: 1, // Map tvshow to movie kind for now
+  };
+
+  const mediaKind = mediaKindMap[mediaType.toLowerCase()] ?? 1;
+
+  try {
+    const response = await fetch(`${BACKEND_API_URL}/api/find-users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mediaType: mediaKind, mediaUrl, mediaTitle }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to find users: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      users: data.users || [],
+      count: data.count || 0,
+    };
+  } catch (error) {
+    console.error("Error finding users with media:", error);
+    return { users: [], count: 0 };
+  }
+}
+
+/**
+ * Get user's NFT token IDs from contract
+ */
+export async function getUserNFTs(
+  publicKey: string
+): Promise<{ tokenIds: string[]; count: number }> {
+  const BACKEND_API_URL =
+    import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3001";
+
+  try {
+    const response = await fetch(
+      `${BACKEND_API_URL}/api/user-nfts/${publicKey}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get user NFTs: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      tokenIds: data.tokenIds || [],
+      count: data.count || 0,
+    };
+  } catch (error) {
+    console.error("Error getting user NFTs:", error);
+    return { tokenIds: [], count: 0 };
+  }
+} // ==================
 // Leaderboard API
 // ==================
 

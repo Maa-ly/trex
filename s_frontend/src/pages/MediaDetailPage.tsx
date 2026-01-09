@@ -19,6 +19,7 @@ import {
 import type { MediaItem, MediaType } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import { MintNFTModal } from "@/components/MintNFTModal";
+import { findUsersWithMedia } from "@/services/api";
 
 const mediaIcons: Record<MediaType, typeof Book> = {
   book: Book,
@@ -30,63 +31,8 @@ const mediaIcons: Record<MediaType, typeof Book> = {
 };
 
 // Mock data - in real app this would come from API
-const mockMediaData: Record<string, MediaItem> = {
-  "1": {
-    id: "1",
-    externalId: "tt0111161",
-    title: "The Shawshank Redemption",
-    type: "movie",
-    description:
-      "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency. Chronicles the experiences of a formerly successful banker as a prisoner in the gloomy jailhouse of Shawshank after being found guilty of a crime he did not commit.",
-    coverImage:
-      "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop",
-    releaseYear: 1994,
-    creator: "Frank Darabont",
-    genre: ["Drama", "Crime"],
-    totalCompletions: 2453,
-    metadata: {
-      duration: "142 min",
-      rating: "9.3/10",
-      imdb: "tt0111161",
-    },
-  },
-  "2": {
-    id: "2",
-    externalId: "978-0-06-112008-4",
-    title: "To Kill a Mockingbird",
-    type: "book",
-    description:
-      "The unforgettable novel of a childhood in a sleepy Southern town and the crisis of conscience that rocked it. Through the young eyes of Scout and Jem Finch, Harper Lee explores the irrationality of adult attitudes toward race and class in the Deep South.",
-    coverImage:
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=600&fit=crop",
-    releaseYear: 1960,
-    creator: "Harper Lee",
-    genre: ["Classic", "Fiction", "Historical"],
-    totalCompletions: 1892,
-    metadata: {
-      pages: "281",
-      isbn: "978-0-06-112008-4",
-    },
-  },
-  "3": {
-    id: "3",
-    externalId: "21",
-    title: "Death Note",
-    type: "anime",
-    description:
-      "A high school student named Light Yagami discovers a supernatural notebook that allows him to kill anyone whose name he writes in it. As Light uses the notebook to create a utopia without criminals, he attracts the attention of a legendary detective known only as L.",
-    coverImage:
-      "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&h=600&fit=crop",
-    releaseYear: 2006,
-    creator: "Madhouse",
-    genre: ["Thriller", "Supernatural", "Psychological"],
-    totalCompletions: 3241,
-    metadata: {
-      episodes: "37",
-      malId: "21",
-    },
-  },
-};
+// TODO: Fetch media data from backend API
+const mockMediaData: Record<string, MediaItem> = {};
 
 export function MediaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -96,6 +42,8 @@ export function MediaDetailPage() {
   const [media, setMedia] = useState<MediaItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showMintModal, setShowMintModal] = useState(false);
+  const [usersWithMedia, setUsersWithMedia] = useState<string[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Check if user has already completed this
   const hasCompleted = completions.some((c) => c.mediaId === id);
@@ -112,6 +60,29 @@ export function MediaDetailPage() {
 
     return () => clearTimeout(timer);
   }, [id]);
+
+  // Load users who completed this media
+  useEffect(() => {
+    if (!id || !media) return;
+
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const result = await findUsersWithMedia(
+          media.type,
+          media.externalId,
+          media.title
+        );
+        setUsersWithMedia(result.users);
+      } catch (error) {
+        console.error("Failed to load users:", error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    loadUsers();
+  }, [id, media]);
 
   if (isLoading) {
     return (
@@ -322,6 +293,29 @@ export function MediaDetailPage() {
               </span>
             </motion.a>
           )}
+
+          {/* Users who completed this */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="card"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-white">Community</h2>
+              {loadingUsers && (
+                <div className="w-4 h-4 border-2 border-coral border-t-transparent rounded-full animate-spin" />
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-dark-400">
+              <Users className="w-5 h-5" />
+              <span className="text-sm">
+                {usersWithMedia.length > 0
+                  ? `${usersWithMedia.length} users completed this`
+                  : "Be the first to complete this!"}
+              </span>
+            </div>
+          </motion.div>
         </div>
 
         {/* Fixed Bottom Action */}

@@ -51,26 +51,6 @@ function mapTypeToContractEnum(mediaType: MediaType): number {
 }
 
 /**
- * Get the CSPR.click reference from the global window object
- */
-function getClickRef(): any {
-  // @ts-ignore - csprclick is injected by CSPR.click SDK
-  return window.csprclick;
-}
-
-/**
- * Get the active account from CSPR.click
- */
-function getActiveAccount(): { public_key: string } | null {
-  const clickRef = getClickRef();
-  if (!clickRef) {
-    console.warn("[Trex] CSPR.click SDK not available");
-    return null;
-  }
-  return clickRef.getActiveAccount?.() || null;
-}
-
-/**
  * Extract title from URL (simple extraction)
  */
 function extractTitleFromUrl(url: string): string {
@@ -116,12 +96,11 @@ export async function mintCompletion(
   });
 
   try {
-    // Get the connected user's public key
-    const activeAccount = getActiveAccount();
-    if (!activeAccount?.public_key) {
-      throw new Error(
-        "No active account connected. Please connect your wallet."
-      );
+    // Use the provided userAddress (works for both web and extension)
+    // For extension: passed directly from MintNFTModal
+    // For web: passed from CSPR.click active account
+    if (!userAddress) {
+      throw new Error("No user address provided. Please connect your wallet.");
     }
 
     // Map the media type to contract enum value
@@ -133,10 +112,10 @@ export async function mintCompletion(
     console.log("[Trex] Calling backend mint API:", {
       endpoint: `${BACKEND_API_URL}/api/mint`,
       payload: {
-        toPublicKey: activeAccount.public_key,
-        kind: kindValue,
-        uri: mediaUrl,
-        name: mediaName,
+        userPublicKey: userAddress,
+        mediaType: kindValue,
+        mediaUrl: mediaUrl,
+        mediaTitle: mediaName,
       },
     });
 
@@ -147,10 +126,10 @@ export async function mintCompletion(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        toPublicKey: activeAccount.public_key,
-        kind: kindValue,
-        uri: mediaUrl,
-        name: mediaName,
+        userPublicKey: userAddress,
+        mediaType: kindValue,
+        mediaUrl: mediaUrl,
+        mediaTitle: mediaName,
       }),
     });
 
@@ -345,18 +324,9 @@ export async function getGroupMemberCount(mediaId: string): Promise<number> {
   console.log("[Trex] Getting group member count:", mediaId);
 
   try {
-    const clickRef = getClickRef();
-    if (!clickRef) {
-      return 0;
-    }
-
-    const proxy = clickRef.getCsprCloudProxy?.();
-    if (!proxy) {
-      return 0;
-    }
-
-    // TODO: Implement actual contract query for group_member_count
-    // This would require a state query or entry point call
+    // TODO: Implement contract query for group_member_count
+    // This requires backend API or RPC proxy
+    // Would need to query the contract state for the group member count
     return 0;
   } catch (error) {
     console.error("[Trex] Error getting group member count:", error);

@@ -62,6 +62,14 @@ interface AppState {
   addToast: (toast: Omit<Toast, "id">) => void;
   removeToast: (id: string) => void;
 
+  // Backend Integration
+  fetchUserNFTs: (publicKey: string) => Promise<string[]>;
+  fetchCommunityUsers: (
+    mediaType: string,
+    mediaUrl: string,
+    mediaTitle: string
+  ) => Promise<string[]>;
+
   // Reset
   logout: () => void;
 }
@@ -160,6 +168,51 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           toasts: state.toasts.filter((t) => t.id !== id),
         })),
+
+      // Fetch user NFTs from backend
+      fetchUserNFTs: async (publicKey: string) => {
+        try {
+          const { getUserNFTs } = await import("@/services/api");
+          const response = await getUserNFTs(publicKey);
+          if (response.tokenIds && response.tokenIds.length > 0) {
+            console.log(
+              `Loaded ${response.count} NFTs for user:`,
+              response.tokenIds
+            );
+            // Note: completions state would need full NFT objects, not just token IDs
+            // This would require another endpoint to get full NFT metadata
+            return response.tokenIds;
+          }
+          return [];
+        } catch (error) {
+          console.error("Failed to fetch user NFTs:", error);
+          get().addToast({
+            type: "error",
+            message: "Failed to load your NFTs",
+          });
+          return [];
+        }
+      },
+
+      // Fetch users who completed a specific media
+      fetchCommunityUsers: async (
+        mediaType: string,
+        mediaUrl: string,
+        mediaTitle: string
+      ) => {
+        try {
+          const { findUsersWithMedia } = await import("@/services/api");
+          const response = await findUsersWithMedia(
+            mediaType,
+            mediaUrl,
+            mediaTitle
+          );
+          return response.users || [];
+        } catch (error) {
+          console.error("Failed to fetch community users:", error);
+          return [];
+        }
+      },
 
       // Logout
       logout: () =>

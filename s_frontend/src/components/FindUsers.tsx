@@ -12,6 +12,7 @@ import {
   Info,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import { getUserNFTs } from "@/services/api";
 
 // Check if running as Chrome extension
 const isExtension =
@@ -51,23 +52,30 @@ export function FindUsers() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Load from storage first
+        // Fetch NFTs from backend
+        const result = await getUserNFTs(user.address);
+        console.log(
+          `[FindUsers] Loaded ${result.count} NFTs:`,
+          result.tokenIds
+        );
+
+        // TODO: Implement real similar users query from contract
+        // For now, show empty until contract query is implemented
+        setMatches([]);
+        setGroups([]);
+
+        // Load from storage if extension (for added friends)
         if (isExtension) {
-          const result = await chrome.storage.local.get([
-            "userMatches",
-            "userGroups",
+          const storageResult = await chrome.storage.local.get([
             "addedFriends",
           ]);
-          if (result.userMatches) setMatches(result.userMatches);
-          if (result.userGroups) setGroups(result.userGroups);
-          if (result.addedFriends)
-            setAddedFriends(new Set(result.addedFriends));
+          if (storageResult.addedFriends)
+            setAddedFriends(new Set(storageResult.addedFriends));
         }
-
-        // TODO: Fetch from Casper chain
-        // For now, use empty arrays if no stored data
       } catch (error) {
         console.error("[Trex] Failed to load community data:", error);
+        setMatches([]);
+        setGroups([]);
       } finally {
         setIsLoading(false);
       }
@@ -99,7 +107,7 @@ export function FindUsers() {
   };
 
   const truncateAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+    return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
   };
 
   return (

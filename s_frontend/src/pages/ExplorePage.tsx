@@ -25,114 +25,8 @@ const mediaTypeFilters = [
 ];
 
 // Mock data for demonstration
-const mockMediaItems: MediaItem[] = [
-  {
-    id: "1",
-    externalId: "tt0111161",
-    title: "The Shawshank Redemption",
-    type: "movie",
-    description: "Two imprisoned men bond over a number of years...",
-    coverImage:
-      "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=300&h=400&fit=crop",
-    releaseYear: 1994,
-    creator: "Frank Darabont",
-    genre: ["Drama"],
-    totalCompletions: 2453,
-  },
-  {
-    id: "2",
-    externalId: "978-0-06-112008-4",
-    title: "To Kill a Mockingbird",
-    type: "book",
-    description:
-      "The unforgettable novel of a childhood in a sleepy Southern town...",
-    coverImage:
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=400&fit=crop",
-    releaseYear: 1960,
-    creator: "Harper Lee",
-    genre: ["Classic", "Fiction"],
-    totalCompletions: 1892,
-  },
-  {
-    id: "3",
-    externalId: "21",
-    title: "Death Note",
-    type: "anime",
-    description: "A high school student discovers a supernatural notebook...",
-    coverImage:
-      "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&h=400&fit=crop",
-    releaseYear: 2006,
-    creator: "Madhouse",
-    genre: ["Thriller", "Supernatural"],
-    totalCompletions: 3241,
-  },
-  {
-    id: "4",
-    externalId: "tt0903747",
-    title: "Breaking Bad",
-    type: "tvshow",
-    description:
-      "A high school chemistry teacher turned methamphetamine manufacturer...",
-    coverImage:
-      "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=300&h=400&fit=crop",
-    releaseYear: 2008,
-    creator: "Vince Gilligan",
-    genre: ["Drama", "Crime"],
-    totalCompletions: 4521,
-  },
-  {
-    id: "5",
-    externalId: "13",
-    title: "One Piece",
-    type: "manga",
-    description: "Follows the adventures of Monkey D. Luffy and his crew...",
-    coverImage:
-      "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?w=300&h=400&fit=crop",
-    releaseYear: 1997,
-    creator: "Eiichiro Oda",
-    genre: ["Adventure", "Action"],
-    totalCompletions: 5123,
-  },
-  {
-    id: "6",
-    externalId: "tt0816692",
-    title: "Interstellar",
-    type: "movie",
-    description: "A team of explorers travel through a wormhole in space...",
-    coverImage:
-      "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=300&h=400&fit=crop",
-    releaseYear: 2014,
-    creator: "Christopher Nolan",
-    genre: ["Sci-Fi", "Drama"],
-    totalCompletions: 3892,
-  },
-  {
-    id: "7",
-    externalId: "978-0-7432-7356-5",
-    title: "1984",
-    type: "book",
-    description: "A dystopian social science fiction novel...",
-    coverImage:
-      "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop",
-    releaseYear: 1949,
-    creator: "George Orwell",
-    genre: ["Dystopian", "Political"],
-    totalCompletions: 2789,
-  },
-  {
-    id: "8",
-    externalId: "1535",
-    title: "Attack on Titan",
-    type: "anime",
-    description: "Humanity lives inside cities surrounded by enormous walls...",
-    coverImage:
-      "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&h=400&fit=crop",
-    releaseYear: 2013,
-    creator: "Wit Studio",
-    genre: ["Action", "Dark Fantasy"],
-    totalCompletions: 4156,
-  },
-];
+// TODO: Fetch media items from backend API
+const mockMediaItems: MediaItem[] = [];
 
 export function ExplorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -150,6 +44,7 @@ export function ExplorePage() {
     // Simulate API call
     setIsLoading(true);
     const timer = setTimeout(() => {
+      // TODO: Implement real media search via backend API
       let filtered = mockMediaItems;
 
       if (selectedType) {

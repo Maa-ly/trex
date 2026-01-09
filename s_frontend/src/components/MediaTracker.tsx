@@ -334,69 +334,8 @@ export function MediaTracker({
     type: "movie",
   });
   const [mediaTypeDropdownOpen, setMediaTypeDropdownOpen] = useState(false);
-  const [showTestList, setShowTestList] = useState(false);
   const [showMintModal, setShowMintModal] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<TrackedMedia | null>(null);
-
-  // Test data for extension testing
-  const testDataList: TrackedMedia[] = [
-    {
-      id: `test-mint-comic-${Date.now()}`,
-      platform: "webtoon",
-      type: "comic",
-      title: "The Amazing Spider-Man (2022) - Episode 13",
-      url: "https://www.webtoons.com/en/graphic-novel/the-amazing-spider-man-2022/episode-13/viewer?title_no=8475&episode_no=13",
-      progress: 100,
-      watchTime: 35,
-      thumbnail:
-        "https://swebtoon-phinf.pstatic.net/20250826_197/1756157211282A8V5q_JPEG/TheAmazingSpiderMan_EpisodeList_Mobile.jpg?type=crop540_540",
-      completed: true,
-      startTime: Date.now(),
-      lastUpdate: Date.now(),
-    },
-    {
-      id: `test-mint-video-${Date.now()}`,
-      platform: "youtube",
-      type: "video",
-      title: "$30 vs $630 Smartwatch (oraimo vs Apple)",
-      url: "https://www.youtube.com/watch?v=oUbGya-2vJI",
-      progress: 4,
-      watchTime: 500,
-      thumbnail: "https://img.youtube.com/vi/oUbGya-2vJI/maxresdefault.jpg",
-      completed: true,
-      startTime: Date.now(),
-      lastUpdate: Date.now(),
-    },
-    {
-      id: `test-mint-manga-${Date.now()}`,
-      platform: "webtoon",
-      type: "manga",
-      title: "Love 4 a Walk (S2) Episode 78",
-      url: "https://www.webtoons.com/en/romance/love-4-a-walk/s2-episode-78/viewer?title_no=6278&episode_no=79",
-      progress: 100,
-      watchTime: 243,
-      thumbnail:
-        "https://swebtoon-phinf.pstatic.net/20240403_279/1712082286574qY5hC_JPEG/6Love-4-A-Walk_EpisodeList_Mobile.jpg?type=crop540_540",
-      completed: true,
-      startTime: Date.now(),
-      lastUpdate: Date.now(),
-    },
-  ];
-
-  const loadTestData = async (index: number) => {
-    const testMedia = testDataList[index];
-    setPendingMints((prev) => [...prev, testMedia]);
-    setShowTestList(false);
-
-    // Also update chrome storage
-    if (isExtension) {
-      const result = await chrome.storage.local.get(["pendingMints"]);
-      const existing = result.pendingMints || [];
-      await chrome.storage.local.set({
-        pendingMints: [...existing, testMedia],
-      });
-    }
-  };
 
   // Detect current active tab site
   useEffect(() => {
@@ -919,42 +858,6 @@ export function MediaTracker({
             <div className="flex items-center justify-center gap-1.5 text-xs text-green-400">
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               <span>Wallet Connected</span>
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {/* Test Data Button - For testing extension functionality */}
-      {isConnected && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="relative"
-        >
-          <button
-            onClick={() => setShowTestList(!showTestList)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-dark-800 border border-dark-700 text-dark-300 hover:text-white hover:border-coral/50 transition-colors"
-          >
-            <Play className="w-4 h-4" />
-            Load Test Data for Minting
-          </button>
-          {showTestList && (
-            <div className="absolute top-full mt-2 left-0 right-0 bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-50">
-              {testDataList.map((data, index) => (
-                <button
-                  key={index}
-                  onClick={() => loadTestData(index)}
-                  className="w-full text-left px-4 py-3 hover:bg-dark-700 transition-colors border-b border-dark-700 last:border-0"
-                >
-                  <p className="text-white text-sm font-medium truncate">
-                    {data.title}
-                  </p>
-                  <p className="text-dark-400 text-xs capitalize">
-                    {data.type} • {data.platform}
-                  </p>
-                </button>
-              ))}
             </div>
           )}
         </motion.div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useClickRef } from "@make-software/csprclick-ui";
 import { useStore } from "@/store/useStore";
+import { useAppStore } from "@/store/useAppStore";
 import { LogOut, Copy, Check, ExternalLink } from "lucide-react";
 import { WalletImageIcon } from "./AppIcons";
 import {
@@ -18,6 +19,7 @@ const runningAsExtension = isExtension();
 export function WalletConnect() {
   const clickRef = useClickRef();
   const { isConnected, user, setUser, setIsConnected } = useStore();
+  const { fetchUserNFTs } = useAppStore();
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -29,15 +31,26 @@ export function WalletConnect() {
         if (session) {
           setUser({ address: session.address, network: session.network });
           setIsConnected(true);
+          // Fetch user's NFTs from backend
+          fetchUserNFTs(session.address).catch((err) => {
+            console.error("Failed to fetch NFTs on session restore:", err);
+          });
         }
       });
 
       // Setup external message listener (for direct extension messaging)
       setupAuthListener((session: WalletSession) => {
-        console.log("[WalletConnect] Session received via external message:", session);
+        console.log(
+          "[WalletConnect] Session received via external message:",
+          session
+        );
         setUser({ address: session.address, network: session.network });
         setIsConnected(true);
         setLoading(false);
+        // Fetch user's NFTs from backend
+        fetchUserNFTs(session.address).catch((err) => {
+          console.error("Failed to fetch NFTs on auth:", err);
+        });
       });
 
       // Setup storage change listener (for content script bridge)
@@ -56,6 +69,10 @@ export function WalletConnect() {
           setUser({ address: session.address, network: session.network });
           setIsConnected(true);
           setLoading(false);
+          // Fetch user's NFTs from backend
+          fetchUserNFTs(session.address).catch((err) => {
+            console.error("Failed to fetch NFTs on storage change:", err);
+          });
         }
 
         // Check for wallet disconnection
@@ -89,6 +106,10 @@ export function WalletConnect() {
         setUser({ address, network: "casper-test" });
         setIsConnected(true);
         setLoading(false);
+        // Fetch user's NFTs from backend
+        fetchUserNFTs(address).catch((err) => {
+          console.error("Failed to fetch NFTs on connect:", err);
+        });
       }
     };
 
@@ -111,13 +132,17 @@ export function WalletConnect() {
             network: "casper-test",
           });
           setIsConnected(true);
+          // Fetch user's NFTs from backend
+          fetchUserNFTs(activeAccount.public_key).catch((err) => {
+            console.error("Failed to fetch NFTs on existing connection:", err);
+          });
         }
       } catch (err) {
         console.log("No active connection");
       }
     };
     checkConnection();
-  }, [clickRef, setIsConnected, setUser, isConnected]);
+  }, [clickRef, setIsConnected, setUser, isConnected, fetchUserNFTs]);
 
   const handleConnect = async () => {
     setLoading(true);
@@ -173,7 +198,8 @@ export function WalletConnect() {
   };
 
   const truncateAddress = (addr: string) => {
-    return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+    if (addr.length <= 15) return addr;
+    return `${addr.slice(0, 11)}...${addr.slice(-4)}`;
   };
 
   if (!isConnected || !user) {

@@ -4,8 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Calendar, Loader2, Sparkles, Trophy } from "lucide-react";
 import type { MediaItem } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
+import { useStore } from "@/store/useStore";
 import { mintCompletion, mapTrackedType } from "@/services/nft";
 import { OpenCookieImageIcon, VeryCoinImageIcon } from "@/components/AppIcons";
+
+// Check if running as extension
+const isExtension =
+  typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id;
 
 interface MintNFTModalProps {
   media: MediaItem;
@@ -20,7 +25,50 @@ export function MintNFTModal({
   onClose,
   onSuccess,
 }: MintNFTModalProps) {
-  const { currentAccount, addToast, addCompletion } = useAppStore();
+  // Use appropriate store based on environment
+  const appStore = useAppStore();
+  const extensionStore = useStore();
+
+  const store = isExtension ? extensionStore : appStore;
+  const currentAccount = isExtension
+    ? store.user
+      ? { address: store.user.address, network: "casper-test" }
+      : null
+    : appStore.currentAccount;
+
+  // Use fetchUserNFTs from the correct store
+  const fetchUserNFTs = isExtension
+    ? extensionStore.fetchUserNFTs
+    : appStore.fetchUserNFTs;
+
+  const addToast = isExtension
+    ? (toast: any) => {
+        console.log("[Trex MintNFTModal]", toast.type, toast.message);
+        // Show browser notification for extension
+        if (typeof chrome !== "undefined" && chrome?.notifications) {
+          chrome.notifications.create({
+            type: "basic",
+            iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
+            title: "Trex - Media Tracker",
+            message: toast.message,
+          });
+        }
+      }
+    : appStore.addToast;
+
+  const addCompletion = isExtension
+    ? (completion: any) => {
+        // For extension, add to NFTs in useStore
+        (store as any).addNFT?.({
+          id: completion.id,
+          tokenId: completion.tokenId,
+          mediaId: completion.mediaId,
+          media: completion.media,
+          mintedAt: completion.mintedAt,
+          transactionHash: completion.transactionHash,
+        });
+      }
+    : appStore.addCompletion;
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
   const [completedDate, setCompletedDate] = useState(
@@ -36,6 +84,7 @@ export function MintNFTModal({
       return;
     }
 
+    console.log("[Trex MintNFTModal] Mint button clicked", { isExtension });
     setIsMinting(true);
     setMintingStatus("Preparing transaction...");
 
@@ -45,6 +94,7 @@ export function MintNFTModal({
       const mediaType = mapTrackedType(media.type);
 
       console.log("[Trex MintNFTModal] Starting mint:", {
+        isExtension,
         userAddress: currentAccount.address,
         mediaUrl,
         mediaType,
@@ -52,6 +102,7 @@ export function MintNFTModal({
       });
 
       setMintingStatus("Requesting signature...");
+      console.log("[Trex MintNFTModal] Status: Requesting signature...");
 
       // Call the nft.ts service with the correct signature
       const result = await mintCompletion(
@@ -66,6 +117,7 @@ export function MintNFTModal({
       if (!result.success) {
         // Show user-friendly error message
         const errorMsg = result.error || "Failed to mint NFT";
+        console.error("[Trex MintNFTModal] Minting failed:", errorMsg);
         addToast({
           type: "error",
           message: errorMsg,
@@ -74,6 +126,8 @@ export function MintNFTModal({
         setMintingStatus("");
         return;
       }
+
+      console.log("[Trex MintNFTModal] Mint successful:", result);
 
       // Add to local state
       addCompletion({
@@ -92,20 +146,32 @@ export function MintNFTModal({
 
       setIsSuccess(true);
       setMintingStatus("NFT minted successfully! 🎉");
+      console.log("[Trex MintNFTModal] Status: Success!");
       addToast({ type: "success", message: "NFT minted successfully! 🎉" });
 
+      // Refresh NFT list
+      if (currentAccount?.address) {
+        fetchUserNFTs(currentAccount.address).catch((err) => {
+          console.error("Failed to refresh NFTs after mint:", err);
+        });
+      }
+
       setTimeout(() => {
+        console.log("[Trex MintNFTModal] Closing modal after success");
         onSuccess?.();
         onClose();
       }, 2000);
     } catch (error) {
-      console.error("Mint error:", error);
+      console.error("[Trex MintNFTModal] Mint error:", error);
       addToast({
         type: "error",
         message: "Failed to mint NFT. Please try again.",
       });
+      setMintingStatus("");
     } finally {
-      setIsMinting(false);
+      if (!isSuccess) {
+        setIsMinting(false);
+      }
     }
   };
 
